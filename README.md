@@ -12,7 +12,7 @@ Algorithm details, see [README.pdf](README.pdf), currently written in Chinese,bu
 
 delay and gain at center frequency
 ![delay_gain.png](example/delay_gain.png)
-basically,the phase delay at center frequency approximates 0. 
+basically, the phase delay at center frequency approximates 0. 
 
 ### Phase compensation
 Phase compensatio is actually to align the peaks of all filter impulse response[^Brown1994], sincee the phase delay at center frequency is already approximate 0.
