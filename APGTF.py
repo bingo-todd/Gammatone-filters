@@ -212,8 +212,9 @@ class APGTF:
         # not aligned
         ir = self.filter_x(x,is_aligned=0);
         self.plot_ir_spec(ir,fig=fig,title='IR(not aligned)') 
+        plt.savefig('example/ir_not_aligned.png')
         # aligned
         ir_algined = self.filter_x(x,is_aligned=1);
         self.plot_ir_spec(ir_algined,fig=fig,title='IR(aligned)') 
-        
+        plt.savefig('example/ir_aligned.png')
         return [ir,ir_algined]
