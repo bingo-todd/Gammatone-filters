@@ -183,12 +183,12 @@ class APGTF:
             fig = plt.figure(figsize=[8,3],dpi=100)
         
         axs = fig.subplots(1,2)
-        axs[0].plot(time_ticks,ir) 
+        axs[0].plot(time_ticks,ir,linewidth=2) 
         axs[0].set_xlabel('Time(s)'); axs[0].set_title(title)
         x_lim_max = time_ticks[np.max(np.nonzero(np.max(ir,axis=1)>np.max(ir)*1e-5)[0])]
         axs[0].set_xlim([0,x_lim_max]) 
         
-        axs[1].plot(freq_ticks,spec); 
+        axs[1].plot(freq_ticks,spec,linewidth=2); 
         axs[1].set_xlabel('Frequency(Hz)'); axs[1].set_title('spectrum')
         plt.tight_layout()
         
@@ -207,6 +207,7 @@ class APGTF:
         
         # gain and delay at center frequency before aligments and gain-normalized
         self.cal_delay_gain(is_plot=True)
+        plt.savefig('example/delay_gain.png')
         
         # impulse response 
         # not aligned
