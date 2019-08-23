@@ -14,4 +14,4 @@ impulse response of Gammatone filters
 - Phase compensation 
 ![ir_aligned](example/ir_aligned.png)
 
-Next, I want to make summary about signal recovery after filtered by Gammatone filters. ![flag](example/flag.jpg)
+Next, I want to make summary about signal recovery after filtered by Gammatone filters. ![flag](example/flag.png)
