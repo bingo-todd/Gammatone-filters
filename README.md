@@ -11,7 +11,7 @@ Algorithm details, see [README.pdf](README.pdf), currently written in Chinese,bu
 ![ir_not_aligned](example/ir_not_aligned.png)
 
 delay and gain at center frequency
-![delay_gain.png]('example/delay_gain.png')
+![delay_gain.png](example/delay_gain.png)
 basically,the phase delay at center frequency approximates 0. 
 
 ### Phase compensation
