@@ -58,24 +58,29 @@ class APGTF:
 
         cfs = self.divide_freq_space(low_freq=low_cf,high_freq=high_cf,N=N_band)# center frequency
         bs = self.cal_ERB(cfs) # bandwidth
-        
+        if (cfs is None) or (bs is None):
+            raise Exception('cfs and bs uninitlaized')
+            
         self.fs = fs
         self.cfs = cfs
         self.bs = bs
         self.N_band = N_band
             
         # load shared library
-        self._path = os.path.join(os.getcwd(),'libAPGTF.so')
-        if not os.path.exists(self._path):
+        self.lib_path = os.path.join(os.getcwd(),'libAPGTF.so')
+        self.load_lib()
+        
+    
+    def load_lib(self):
+        if not os.path.exists(self.lib_path):
             raise Exception('missing libAPGF.so')
-        _cmodel = ctypes.cdll.LoadLibrary(self._path)
+        _cmodel = ctypes.cdll.LoadLibrary(self.lib_path)
         self._gt_filter = _cmodel.APGTF
         DoubleArray = DoubleArrayType()
         self._gt_filter.argtypes = (DoubleArray,ctypes.c_int,ctypes.c_int,
                                     DoubleArray,DoubleArray,ctypes.c_int,ctypes.c_int)
         
-        if self.cfs is None or self.bs is None:
-            raise Exception('cfs and bs uninitlaized')
+
     
     
     def divide_freq_space(self,low_freq,high_freq,N,divide_type='ERB'):
@@ -117,14 +122,33 @@ class APGTF:
     def filter_x(self,x,is_aligned=0):
         """filter input signal
         Args:
-            x: signal to be filtered
+            x: signal with shape of [x_len,N_chann], if x only has single dimension, 
+               N_chann will be added as 1
             is_aligned: aligned peaks of Gammatone filter impulse response
         Returns:
-            fitler result with the shape of [x_len,N_band]
+            fitler result with the shape of [N_band,x_len,N_chann]
         """
-        self._gt_filter.restype = ndpointer(dtype=ctypes.c_double, shape=(self.N_band,x.shape[0]))
-        y =  self._gt_filter(x,x.shape[0],self.fs,self.cfs,self.bs,self.N_band,is_aligned)
-        return y.T
+        
+        if not isinstance(x,np.ndarray):
+            raise Exception()
+        if len(x.shape) > 2:
+            raise Exception('two many dimensions for x')
+        
+        x_len = x.shape[0]
+        if len(x.shape) == 1:    
+            x.shape = (x_len,1)
+        N_chann = x.shape[1]
+            
+        x_filtered = np.zeros((self.N_band,x_len,N_chann))
+        self._gt_filter.restype = ndpointer(dtype=ctypes.c_double,
+                                            shape=(self.N_band,x.shape[0]))
+        
+        for chann_i in range(N_chann): 
+            x_chann = np.copy(x[:,chann_i])# data in slice are not stored in continue memmory
+            x_filtered[:,:,chann_i] =  self._gt_filter(x_chann, x_chann.shape[0],
+                                                       self.fs, self.cfs,self.bs,
+                                                       self.N_band,is_aligned)
+        return np.squeeze(x_filtered)
         
     
     def cal_delay_gain(self,is_plot=False):
@@ -207,15 +231,14 @@ class APGTF:
         
         # gain and delay at center frequency before aligments and gain-normalized
         self.cal_delay_gain(is_plot=True)
-        plt.savefig('example/delay_gain.png')
         
         # impulse response 
         # not aligned
         ir = self.filter_x(x,is_aligned=0);
-        self.plot_ir_spec(ir,fig=fig,title='IR(not aligned)') 
-        plt.savefig('example/ir_not_aligned.png')
+        self.plot_ir_spec(ir.T,fig=fig,title='IR(not aligned)') 
+#         plt.savefig('example/ir_not_aligned.png')
         # aligned
         ir_algined = self.filter_x(x,is_aligned=1);
-        self.plot_ir_spec(ir_algined,fig=fig,title='IR(aligned)') 
-        plt.savefig('example/ir_aligned.png')
+        self.plot_ir_spec(ir_algined.T,fig=fig,title='IR(aligned)') 
+#         plt.savefig('example/ir_aligned.png')
         return [ir,ir_algined]
