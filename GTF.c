@@ -13,7 +13,8 @@
 #define MIN_VALUE 1e-20
 #define pi 3.14159265358979323846
 
-double* APGTF(double*x,int x_len,int fs, double*cfs, double*bs, int N_band, int is_aligned){
+double* APGTF(double*x,int x_len,int fs, double*cfs, double*bs, int N_band,
+              int is_aligned, int delay_common, int is_gain_norm){
 
     double* y = (double*)malloc(sizeof(double)*x_len*N_band);
     double* gains = (double*)malloc(sizeof(double)*N_band);
@@ -35,23 +36,24 @@ double* APGTF(double*x,int x_len,int fs, double*cfs, double*bs, int N_band, int 
     int band_i, sample_i, order;
 
     if(is_aligned == 1){
-        max_delay = 0;
-        for(band_i=0;band_i<N_band;band_i++){
-            delays[band_i] = round(3.0/(2.0*pi*bs[band_i])*fs);
-            if(delays[band_i]>max_delay){
-                max_delay = delays[band_i];
-            }
+      max_delay = 0;
+      for(band_i=0;band_i<N_band;band_i++){
+        delays[band_i] = round(3.0/(2.0*pi*bs[band_i])*fs);
+        if(delays[band_i]>max_delay){
+          max_delay = delays[band_i];
         }
-        if(max_delay<0){
-            return NULL;
-        }
+      }
+      if(delay_common<0){
+        delay_common = max_delay;
+      }
     }
     else{
         for(band_i=0;band_i<N_band;band_i++){
             delays[band_i]=0;
         }
-        max_delay = 0;
+        delay_common = 0;
     }
+
 
     memset(y,0,sizeof(double)*x_len*N_band);
     for(band_i=0;band_i<N_band;band_i++){
@@ -64,14 +66,19 @@ double* APGTF(double*x,int x_len,int fs, double*cfs, double*bs, int N_band, int 
         b[0] = 1; b[1] = 1;   b[2] = 4*k;    b[3] = k*k;
 
         // filter amp gain normalized
-        gains[band_i] = pow(1-k,4)/(1+4*k+k*k)*2;
-
+        if(is_gain_norm==1){
+          gains[band_i] = pow(1-k,4)/(1+4*k+k*k)*2;
+        }
+        else{
+          gains[band_i] = 1;
+        }
         // computation acceleration
         // convert cos(\phi1+\ph2) and sin(\phi1+\phi2) into mutliplication and summation
         cos_step = cos(tpt*cfs[band_i]); sin_step = sin(tpt*cfs[band_i]);
         freq_shiftor_pre[0] = cos_step;
         freq_shiftor_pre[1] = -sin_step;
-        delay_band = delays[band_i]-max_delay;
+        delay_band = delays[band_i]-delay_common;
+
         for(sample_i=0; sample_i<x_len+delay_band; sample_i++){
             freq_shiftor[0] = freq_shiftor_pre[0]*cos_step - freq_shiftor_pre[1]*sin_step;
             freq_shiftor[1] = freq_shiftor_pre[1]*cos_step + freq_shiftor_pre[0]*sin_step;
