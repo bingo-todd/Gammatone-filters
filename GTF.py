@@ -290,7 +290,7 @@ class GTF:
         phase_spectrum1 = np.flip(np.unwrap(np.angle(np.flip(gain_funcs[:4001]))))
         phase_spectrum2 = np.unwrap(np.angle(gain_funcs[4000:]))
         phase_spectrum = np.concatenate((phase_spectrum1[:4000],phase_spectrum2))
-
+        delays = np.divide(phase_spectrum,freq_bins)
 
         fig,ax1 = plt.subplots()
         linewidth = 2
@@ -301,14 +301,14 @@ class GTF:
         ax1.set_xlabel('frequency(kHz)')
         ax1.tick_params(axis='y',labelcolor=color)
         ax1.set_title('CF=4kHz')
-        
+
         ax2 = ax1.twinx()
         color='tab:blue'
         ax2.plot(freq_bins/1000,phase_spectrum,color=color,linewidth=linewidth)
         # ax2.get_x
         ax2.plot([4,4],[-8,8],'-.',color='black')
         ax2.plot([0,self.fs/2/1000],[0,0],'-.',color='black')
-        ax2.set_ylabel('rad',color=color )
+        ax2.set_ylabel('delay(ms)',color=color )
         ax2.tick_params(axis='y',labelcolor=color)
 
         fig.savefig('images/filter_spectrum.png')
