@@ -348,7 +348,7 @@ class gtf:
         return [delays,gains]
 
 
-    def plot_ir_spec(self,ir,fs=None,cfs=None,fig=None,title='ir'):
+    def plot_ir_spec(self,ir,fs=None,cfs=None,fig=None):
         """plot the waveform and spectrum of given impulse response
         Args:
             ir: impulse response
@@ -365,28 +365,37 @@ class gtf:
         N_fft_half = np.int(N_fft/2)
 
         index = np.flip(np.argsort(cfs))
-        cfs = cfs
+        cfs = cfs[index]
         ir = ir[index,:]
 
         spec = np.abs(np.fft.fft(ir,N_fft,axis=1))[:,:N_fft_half]
 
         time_ticks = np.arange(ir_len)/self.fs
         freq_ticks = np.arange(N_fft_half)/N_fft*self.fs
-        if fig is None:
-            fig = plt.figure(figsize=[8,3])
         x_lim_max = 0.08
         linewidth = 2
-        axes = fig.subplots(1,2)
-        axes[0].plot(time_ticks,ir.T,linewidth=linewidth);
-        axes[0].set_xlabel('Time(s)'); axes[0].set_title(title)
-        axes[0].set_xlim([0,x_lim_max])
-        axes[0].legend(['{:.0f}'.format(cf) for cf in cfs])
+        if fig is None:
+            fig = plt.figure(figsize=[8,6])
+        axes = fig.subplots(2,2)
+        axes[0,0].plot(time_ticks,ir.T,linewidth=linewidth);
+        axes[0,0].set_xlabel('Time(s)');
+        axes[0,0].set_title('irs')
+        axes[0,0].set_xlim([0,x_lim_max])
+        # axes[0,0].legend(['{:.0f}'.format(cf) for cf in cfs])
 
-        axes[1].plot(freq_ticks,spec.T,linewidth=linewidth);
-        axes[1].set_xlim([self.cf_low/8.0,self.cf_high*1.5])
-        axes[1].set_xlabel('Frequency(Hz)');
-        axes[1].set_title('spectrum')
-        axes[1].legend(['{:.0f}'.format(cf) for cf in cfs])
+        axes[0,1].plot(freq_ticks,spec.T,linewidth=linewidth);
+        axes[0,1].set_xlim([self.cf_low/8.0,self.cf_high*1.5])
+        axes[0,1].set_xlabel('Frequency(Hz)');
+        axes[0,1].set_title('spectrum')
+        # axes[0,1].legend(['{:.0f}'.format(cf) for cf in cfs])
+
+        axes[1,0].plot(time_ticks,np.sum(ir,axis=0),linewidth=linewidth)
+        axes[1,0].set_xlabel('Time(s)');
+        axes[1,0].set_title('sum of irs')
+        axes[1,0].set_xlim([0,x_lim_max])
+
+        axes[1,1].axis('off')
+
         plt.tight_layout()
 
         return fig
@@ -442,7 +451,7 @@ class gtf:
 
 def example():
     fs = 16e3
-    gt_filter = gtf(fs,freq_low=80,freq_high=1e3,n_band=4)
+    gt_filter = gtf(fs,freq_low=80,freq_high=5e3,n_band=16)
 
     # delays and gains
     fig = plt.figure()

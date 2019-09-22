@@ -13,13 +13,26 @@
 #define MIN_VALUE 1e-20
 #define pi 3.14159265358979323846
 
+/* multiply b to a*/
+void complex_multiply(double a[2], double b[2]){
+  double tmp[2];
+  tmp[0]=a[0]; tmp[1]=a[1];
+  a[0] = tmp[0]*b[0]-tmp[1]*b[1];
+  a[1] = tmp[0]*b[1]+tmp[1]*b[0];
+}
+
+void free_mem(double* ptr){
+  free(ptr);
+}
+
+
 double* gtf(double*x,int x_len,int fs, double*cfs, double*bs, int n_band,
             int is_env_aligned, int is_fine_aligned, int delay_common,
             int is_gain_norm){
 
     double* y = (double*)malloc(sizeof(double)*x_len*n_band);// filter result
     int* delays = (int*)malloc(sizeof(int)*n_band); // for aligning
-    double phi0,phi0_cos,phi0_sin;
+    double phi0,phi0_complex[2];
     double gain_band = 1; //
     int max_delay=0,delay_band=0;
 
@@ -75,13 +88,14 @@ double* gtf(double*x,int x_len,int fs, double*cfs, double*bs, int n_band,
           gain_band = 1;
         }
         // aligned filter ir fine-structure
-        if(is_env_aligned==1){
-          phi0 = -3.0*cfs[band_i]/bs[band_i];
+        if(is_fine_aligned==1){
+          phi0 = round(-3.0*cfs[band_i]/bs[band_i]*fs)/fs;
         }
         else{
           phi0 = 0;
         }
-        phi0_cos = cos(phi0); phi0_sin = sin(phi0);
+        phi0_complex[0] = cos(phi0);
+        phi0_complex[1] = sin(phi0);
         /*
         computation acceleration
         convert cos(\phi1+\ph2) and sin(\phi1+\phi2) into mutliplication
@@ -109,8 +123,10 @@ double* gtf(double*x,int x_len,int fs, double*cfs, double*bs, int n_band,
                 p[0][1] = 0;
             }
             else{
-                p[0][0] = x[sample_i]*freq_shiftor[0]*phi0_cos;
-                p[0][1] = x[sample_i]*freq_shiftor[1]*phi0_sin;
+                p[0][0] = x[sample_i]*freq_shiftor[0];
+                p[0][1] = -x[sample_i]*freq_shiftor[1];
+                //
+                complex_multiply(p[0],phi0_complex);
             }
 
             for(order=1;order<=4;order++){
@@ -128,7 +144,7 @@ double* gtf(double*x,int x_len,int fs, double*cfs, double*bs, int n_band,
             // final output = real part of filte result
             if(sample_i>=delay_band){
                 y[band_i*x_len+sample_i-delay_band] = gain_band*(u0[0]*freq_shiftor[0] -
-                                                                     u0[1]*freq_shiftor[1]);
+                                                                 u0[1]*freq_shiftor[1]);
             }
             // update filter states
             for(order=4;order>=1;order--){
@@ -140,9 +156,4 @@ double* gtf(double*x,int x_len,int fs, double*cfs, double*bs, int n_band,
 
     free(delays);
     return y;
-}
-
-
-void free_mem(double* ptr){
-  free(ptr);
 }
