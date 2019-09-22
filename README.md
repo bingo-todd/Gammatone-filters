@@ -162,6 +162,11 @@ code
 ```
 
 
+<table>
+<tr> <td><img src='test.png'></td> </tr>
+<tr> <td><img src='test_phi0.png'></td> </tr> 
+</table>
+
 
 [^Holdsworth1988]: Holdsworth, John, Roy Patterson, and Ian Nimmo-Smith. Implementing a GammaTone Filter Bank
 

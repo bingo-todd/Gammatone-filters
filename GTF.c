@@ -1,5 +1,5 @@
 //
-//  APGTF.c
+//  gtf.c
 //  all-pole gammatone filters
 //
 //  Created by songtao on 2019/8/17.
@@ -13,50 +13,52 @@
 #define MIN_VALUE 1e-20
 #define pi 3.14159265358979323846
 
-double* APGTF(double*x,int x_len,int fs, double*cfs, double*bs, int N_band,
-              int is_aligned, int delay_common, int is_gain_norm){
+double* gtf(double*x,int x_len,int fs, double*cfs, double*bs, int n_band,
+            int is_env_aligned, int is_fine_aligned, int delay_common,
+            int is_gain_norm){
 
-    double* y = (double*)malloc(sizeof(double)*x_len*N_band);
-    double* gains = (double*)malloc(sizeof(double)*N_band);
-    int* delays = (int*)malloc(sizeof(int)*N_band);
+    double* y = (double*)malloc(sizeof(double)*x_len*n_band);// filter result
+    int* delays = (int*)malloc(sizeof(int)*n_band); // for aligning
+    double phi0,phi0_cos,phi0_sin;
+    double gain_band = 1; //
     int max_delay=0,delay_band=0;
 
-    // vars to shift frequency
+    // variables for frequency shiftor
     double freq_shiftor[2],freq_shiftor_pre[2];
-    double cos_step, sin_step;
+    double freq_shiftor_step[2];
 
-    // vars related to filters
+    // variables related to filters
     double tpt = 2*pi*(1.0/(double)fs); // constant
     double p[5][2]; // IIR filter status
-    double a[5]; // IIR filter coeffs
+    double a[5]; // IIR filter coefficients
     double u0[2]; // FIR filter output
-    double b[4]; // FIR filter coeffs
+    double b[4]; // FIR filter coefficients
     double k; // constants for each band
 
     int band_i, sample_i, order;
 
-    if(is_aligned == 1){
+    // calculate delay for each band
+    if(is_env_aligned == 1){
       max_delay = 0;
-      for(band_i=0;band_i<N_band;band_i++){
+      for(band_i=0;band_i<n_band;band_i++){
         delays[band_i] = round(3.0/(2.0*pi*bs[band_i])*fs);
-        if(delays[band_i]>max_delay){
+        if(delays[band_i]>max_delay){ // find maximum delays
           max_delay = delays[band_i];
         }
       }
-      if(delay_common<0){
-        delay_common = max_delay;
+      if(delay_common<0){ // if delay_common<0,
+        delay_common = max_delay; // align all filters to maximum delay
       }
     }
     else{
-        for(band_i=0;band_i<N_band;band_i++){
+        for(band_i=0;band_i<n_band;band_i++){
             delays[band_i]=0;
         }
         delay_common = 0;
     }
 
-
-    memset(y,0,sizeof(double)*x_len*N_band);
-    for(band_i=0;band_i<N_band;band_i++){
+    memset(y,0,sizeof(double)*x_len*n_band);
+    for(band_i=0;band_i<n_band;band_i++){
         // initiation of filter states
         memset(p,0,sizeof(double)*10);
 
@@ -67,21 +69,36 @@ double* APGTF(double*x,int x_len,int fs, double*cfs, double*bs, int N_band,
 
         // filter amp gain normalized
         if(is_gain_norm==1){
-          gains[band_i] = pow(1-k,4)/(1+4*k+k*k)*2;
+          gain_band = pow(1-k,4)/(1+4*k+k*k)*2;
         }
         else{
-          gains[band_i] = 1;
+          gain_band = 1;
         }
-        // computation acceleration
-        // convert cos(\phi1+\ph2) and sin(\phi1+\phi2) into mutliplication and summation
-        cos_step = cos(tpt*cfs[band_i]); sin_step = sin(tpt*cfs[band_i]);
-        freq_shiftor_pre[0] = cos_step;
-        freq_shiftor_pre[1] = -sin_step;
-        delay_band = delays[band_i]-delay_common;
+        // aligned filter ir fine-structure
+        if(is_env_aligned==1){
+          phi0 = -3.0*cfs[band_i]/bs[band_i];
+        }
+        else{
+          phi0 = 0;
+        }
+        phi0_cos = cos(phi0); phi0_sin = sin(phi0);
+        /*
+        computation acceleration
+        convert cos(\phi1+\ph2) and sin(\phi1+\phi2) into mutliplication
+        and summation
+        */
+        freq_shiftor_step[0] = cos(tpt*cfs[band_i]);
+        freq_shiftor_step[1] = sin(tpt*cfs[band_i]);
 
+        freq_shiftor_pre[0] = freq_shiftor_step[0];
+        freq_shiftor_pre[1] = -freq_shiftor_step[1];
+
+        delay_band = delays[band_i]-delay_common;
         for(sample_i=0; sample_i<x_len+delay_band; sample_i++){
-            freq_shiftor[0] = freq_shiftor_pre[0]*cos_step - freq_shiftor_pre[1]*sin_step;
-            freq_shiftor[1] = freq_shiftor_pre[1]*cos_step + freq_shiftor_pre[0]*sin_step;
+            freq_shiftor[0] = (freq_shiftor_pre[0]*freq_shiftor_step[0] -
+                               freq_shiftor_pre[1]*freq_shiftor_step[1]);
+            freq_shiftor[1] = (freq_shiftor_pre[1]*freq_shiftor_step[0] +
+                               freq_shiftor_pre[0]*freq_shiftor_step[1]);
             freq_shiftor_pre[0] = freq_shiftor[0];
             freq_shiftor_pre[1] = freq_shiftor[1];
 
@@ -92,8 +109,8 @@ double* APGTF(double*x,int x_len,int fs, double*cfs, double*bs, int N_band,
                 p[0][1] = 0;
             }
             else{
-                p[0][0] = x[sample_i]*freq_shiftor[0];
-                p[0][1] = x[sample_i]*(-freq_shiftor[1]);
+                p[0][0] = x[sample_i]*freq_shiftor[0]*phi0_cos;
+                p[0][1] = x[sample_i]*freq_shiftor[1]*phi0_sin;
             }
 
             for(order=1;order<=4;order++){
@@ -110,7 +127,7 @@ double* APGTF(double*x,int x_len,int fs, double*cfs, double*bs, int N_band,
 
             // final output = real part of filte result
             if(sample_i>=delay_band){
-                y[band_i*x_len+sample_i-delay_band] = gains[band_i]*(u0[0]*freq_shiftor[0] +
+                y[band_i*x_len+sample_i-delay_band] = gain_band*(u0[0]*freq_shiftor[0] -
                                                                      u0[1]*freq_shiftor[1]);
             }
             // update filter states
@@ -121,7 +138,6 @@ double* APGTF(double*x,int x_len,int fs, double*cfs, double*bs, int N_band,
         }
     }
 
-    free(gains);
     free(delays);
     return y;
 }
