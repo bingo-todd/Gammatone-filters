@@ -514,6 +514,7 @@ if __name__ == '__main__':
     if 'example' in sys.argv:
         example()
     if 'efficiency' in sys.argv:
+        
         efficiency_check()
 
     if 'ir_python' in sys.argv:
