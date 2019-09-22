@@ -2,7 +2,151 @@
 Python implementation of all-pole Gammatone filter.
 The filtering part of code is written in C.
 
-Gammatone滤波器冲击响应（Impulse response,IR）：
+## Basic idea of implementation [^Holdsworth1988]
+Gammatone filter can be regarded as low-pass filter with frequency shitfted by fc(center freuqency of filter). Equalently, we can
+1. Shift the frequency of input signal by -fc(center frequency of filter);
+2. Filter shifted signal with corresponding lowpass filter
+3. Shift the frequency of filtered signal back by fc.
+![diagram](images/diagram.png)!
+
+Details, see [README.pdf](README.pdf), currently written in Chinese, but most part are math equations.
+
+## Filter spectrum
+
+  <center> <img src='images\filter_spectrum\filter_spectrum.png'> </center>
+
+## Gain normalization
+
+  <center> <img src='images\gain_normalization\delay_gain.png'> </center>
+
+  <center> <img src='images\gain_normalization\irs.png'> </center>
+
+  <center> <img src='images\gain_normalization\irs_norm.png'> </center>
+
+
+## Phase compensation
+
+  Phase compensation is actually to align the peaks of all filter impulse response[^Brown1994].
+
+  The impulse response of Gammatone filter is given as
+
+  $$
+  \begin{equation}
+  \begin{aligned}
+  g(t) = a\frac{t^{n-1}\cos(2\pi f_ct+\phi)}{e^{2\pi b t}}
+  \end{aligned}
+  \end{equation}\label{gtf_equation}
+  $$
+
+  <center> <img src='images\phase_compensation\gtf_irs.png'> </center>
+
+  $g(t)$ can be be regarded as production of two parts :
+  $$
+  \begin{equation}
+  \begin{aligned}
+   g(t)=g_{amp}(t)\times g_{fine}(t)
+  \end{aligned}
+  \end{equation}
+  $$
+  - Envelope parts:  $\quad g_{amp}(t) = a\frac{t^{n-1}}{e^{2\pi b t}}$
+  - Fine structure part: $\quad g_{fine}(t) = \cos(2\pi f_ct+\phi)$
+
+  ### Envelope alignment
+  The peak position $t_{peak}$ can be obtained by setting first-order derivative of $g_{amp}(t)$ to 0
+  $$
+  \begin{equation}
+  \begin{aligned}
+  \frac{\partial g_{amp}(t)}{\partial t} &= \frac{(n-1)t^{n-2}}{e^{2\pi bt}}-\frac{t^{n-1}2\pi b}{e^{2\pi bt}}\\
+  &=\frac{t^{n-2}}{e^{2\pi bt}}(n-1-2\pi bt) \triangleq 0\\
+  \Rightarrow& \quad t_{peak}=\frac{(n-1)}{2\pi b}
+  \end{aligned}
+  \end{equation}
+  $$
+
+  Delay $g_{amp}$ by $-t_{peak}$ to align the peaks of filter bank
+  $$
+  \begin{equation}
+  \begin{aligned}
+  g_{align}(t) = g_{amp}(t-\tau)g_{fine}(t)
+  \end{aligned}
+  \end{equation}
+  $$
+
+  Example of $g_{align}$ ($\phi$ is set to 0)
+  <center> <img src='images\phase_compensation\gtf_irs_env_aligned.png'> </center>
+
+  ### Fine structure alignment
+  Further more, align $g_{fine}(t)$
+
+  $$
+  \begin{equation}
+  \begin{aligned}
+  & \cos(2\pi f_ct+\phi)|_{t=t_{max}} \triangleq 1\\
+  \Rightarrow& \quad  \phi = -\frac{(n-1)f_c}{b}+i2\pi, \quad i=0,\pm 1,\cdots
+  \end{aligned}
+  \end{equation}
+  $$
+
+  <center> <img src='images/phase_compensation/gtf_irs_all_aligned.png'></center>
+
+  ### Illustration of purpose of alignment
+
+  For a stimulus of impulse, what if we add up all filter outpus ?  Ideally, a impulse is expected
+    <table>
+    <tr>
+    <td align=center> Not aligned </td>
+    <td align=center> Envelope aligned </td>
+    <td align=center> Envelop & fine structure aligned </td>
+    </tr>
+    <tr>
+    <td> <center> <img src='images\stimulus_restore\irs.png'> </center> </td>
+    <td>   <center> <img src='images\stimulus_restore\irs_env_aligned.png'> </center> </td>
+    <td>   <center> <img src='images/stimulus_restore/irs_all_aligned.png'></center> </td>
+    </tr>
+    </table>
+
+## Example
+
+  ```
+  │   diagram.odp
+│   gtf.c
+│   gtf.py
+│   libgtf.so
+│   README.md
+│   README.pdf
+│
+├───examples
+│       efficiency.py
+│       filter_spectrum.py
+│       gain_normalization.py
+│       phase_compensation.py
+│       stimulus_restore.py
+│
+└───images
+    ├ ....
+  ```
+
+
+  <!-- Next, I want to make summary about signal recovery after filtered by Gammatone filters.[Flag] -->
+
+### About efficiency
+
+code
+```shell
+ $ python GTF.py efficiency
+
+ time consumed(s)
+    c         :0.39
+    python    :36.23
+```
+
+
+[^Holdsworth1988]: Holdsworth, John, Roy Patterson, and Ian Nimmo-Smith. Implementing a GammaTone Filter Bank
+
+[^Brown1994]: G. J. Brown and M. P. Cooke (1994) Computational auditory scene analysis. Computer Speech and Language, 8, pp. 297-336
+
+
+<!-- Gammatone滤波器冲击响应（Impulse response,IR）：
 
 $$
 g(t) = \frac{at^{n-1}\cos(2\pi f_ct+\phi)}{e^{2\pi b t}}
@@ -109,65 +253,4 @@ Gain_{f_c} = \frac{3}{(2\pi b)^4}\frac{\sqrt{(16Q^4-24Q^2+2)^2+(8Q-32Q^3)^2}}{\s
 \phi_{f_c} = \arctan{\frac{8Q-32Q^3}{16Q^4-24Q^2+2}}-\arctan{\frac{8Q-32Q^3}{16Q^4-24Q^2+1}}\\
 \end{aligned}
 \end{equation}
-$$
-
-
-## Basic ideas [^Holdsworth1988]
-Gammatone filter can be regarded as low-pass filter with frequency shitfted by fc. Now, equalently, we can first shift input signal by -fc and filter it with a lowpass filter, finally shift the frequency by fc.
-![diagram](images/diagram.png)!
-
-Details, see [README.pdf](README.pdf), currently written in Chinese, but most part are math equations.
-
-## Example
-
-  ```Python
-  gtf = APGTF(fs=44100,low_cf=80,high_cf=5000,N_band=32)
-  x_filtered = gtf.filter_c(x,is_aligned=0)# not aligned
-  ```
-
-### Delays and gains at cfs
-  Take filter with cf=4kHz for example, the gain and phase spectrum
-  ![delays_gains](images/filter_spectrum.png)
-
-  For delays and gains at center frequencies
-  ![delay_gain.png](images/delay_gain.png)
-  Basically, the phase delay at center frequency approximates 0.
-
-## Impulse response of Gammatone filters
-- Max-amplitude normalized on all bands
-
-  ![ir.png](images/ir.png)
-
-- Gain normalization
-
-  ![ir_norm](images/ir_norm.png)
-
-- Phase compensation
-
-  Phase compensation is actually to align the peaks of all filter impulse response[^Brown1994].
-
-  ![ir_norm_aligned](images/ir_norm_aligned.png)
-
-  <!-- Next, I want to make summary about signal recovery after filtered by Gammatone filters.[Flag] -->
-
-### About efficiency
-
-code
-```shell
- $ python GTF.py efficiency
-
- time consumed(s)
-    c         :0.39
-    python    :36.23
-```
-
-
-<table>
-<tr> <td><img src='test.png'></td> </tr>
-<tr> <td><img src='test_phi0.png'></td> </tr> 
-</table>
-
-
-[^Holdsworth1988]: Holdsworth, John, Roy Patterson, and Ian Nimmo-Smith. Implementing a GammaTone Filter Bank
-
-[^Brown1994]: G. J. Brown and M. P. Cooke (1994) Computational auditory scene analysis. Computer Speech and Language, 8, pp. 297-336
+$$ -->

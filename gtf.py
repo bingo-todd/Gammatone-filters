@@ -273,46 +273,6 @@ class gtf:
         return np.squeeze(x_filtered)
 
 
-    def filter_spectrum(self):
-
-        order = 4
-        freq_bins = np.arange(1,self.fs/2)
-        n_freq_bin = freq_bins.shape[0]
-
-        cf =4e3
-        bw = self.cal_ERB(cf)
-        gain_funcs = 6/((2*np.pi*bw)**order)*\
-                            (np.divide(1,1+1j*(freq_bins-cf)/bw)**order+
-                             np.divide(1,1+1j*(freq_bins+cf)/bw)**order)
-        amp_spectrum = np.abs(gain_funcs)
-
-        phase_spectrum1 = np.flip(np.unwrap(np.angle(np.flip(gain_funcs[:4001]))))
-        phase_spectrum2 = np.unwrap(np.angle(gain_funcs[4000:]))
-        phase_spectrum = np.concatenate((phase_spectrum1[:4000],phase_spectrum2))
-        delays = np.divide(phase_spectrum,freq_bins)
-
-        fig,ax1 = plt.subplots()
-        linewidth = 2
-
-        color = 'tab:red'
-        ax1.semilogy(freq_bins/1000,amp_spectrum,color=color,linewidth=linewidth)
-        ax1.set_ylabel('dB',color=color )
-        ax1.set_xlabel('frequency(kHz)')
-        ax1.tick_params(axis='y',labelcolor=color)
-        ax1.set_title('cf=4kHz')
-
-        ax2 = ax1.twinx()
-        color='tab:blue'
-        ax2.plot(freq_bins/1000,delays,color=color,linewidth=linewidth)
-        # ax2.get_x
-        ax2.plot([4,4],[-8,8],'-.',color='black')
-        ax2.plot([0,self.fs/2/1000],[0,0],'-.',color='black')
-        ax2.set_ylabel('delay(ms)',color=color )
-        ax2.tick_params(axis='y',labelcolor=color)
-
-        fig.savefig('images/filter_spectrum.png')
-
-
     def cal_delay_gain_cfs(self,is_plot=False,fig=None):
         """ Calculate delay and center-frequency gain of gammatone filter
         before alignment and gain-normalization
@@ -376,26 +336,16 @@ class gtf:
         linewidth = 2
         if fig is None:
             fig = plt.figure(figsize=[8,6])
-        axes = fig.subplots(2,2)
-        axes[0,0].plot(time_ticks,ir.T,linewidth=linewidth);
-        axes[0,0].set_xlabel('Time(s)');
-        axes[0,0].set_title('irs')
-        axes[0,0].set_xlim([0,x_lim_max])
-        # axes[0,0].legend(['{:.0f}'.format(cf) for cf in cfs])
+        axes = fig.subplots(1,2)
+        axes[0].plot(time_ticks,ir.T,linewidth=linewidth);
+        axes[0].set_xlabel('Time(s)');
+        axes[0].set_title('irs')
+        axes[0].set_xlim([0,x_lim_max])
 
-        axes[0,1].plot(freq_ticks,spec.T,linewidth=linewidth);
-        axes[0,1].set_xlim([self.cf_low/8.0,self.cf_high*1.5])
-        axes[0,1].set_xlabel('Frequency(Hz)');
-        axes[0,1].set_title('spectrum')
-        # axes[0,1].legend(['{:.0f}'.format(cf) for cf in cfs])
-
-        axes[1,0].plot(time_ticks,np.sum(ir,axis=0),linewidth=linewidth)
-        axes[1,0].set_xlabel('Time(s)');
-        axes[1,0].set_title('sum of irs')
-        axes[1,0].set_xlim([0,x_lim_max])
-
-        axes[1,1].axis('off')
-
+        axes[1].plot(freq_ticks,spec.T,linewidth=linewidth);
+        axes[1].set_xlim([self.cf_low/8.0,self.cf_high*1.5])
+        axes[1].set_xlabel('Frequency(Hz)');
+        axes[1].set_title('spectrum')
         plt.tight_layout()
 
         return fig
@@ -449,81 +399,17 @@ class gtf:
         return ir
 
 
-def example():
-    fs = 16e3
-    gt_filter = gtf(fs,freq_low=80,freq_high=5e3,n_band=16)
 
-    # delays and gains
-    fig = plt.figure()
-    gt_filter.cal_delay_gain_cfs(is_plot=True,fig=fig)
-    fig.savefig('images/delay_gain.png')
 
-    # impulse response direct from equation
-    ir_equation = gt_filter.get_ir_equation()
-    ir_equation = ir_equation/np.max(np.abs(ir_equation))
 
-    # ir: filter impulse signal
-    ir = gt_filter.get_ir(is_gain_norm=False)
-    # print('ir',ir)
-    ir = ir/np.max(np.abs(ir))
 
-    # gain normalization
-    ir_norm = gt_filter.get_ir()
 
-    # ir envelope compensated
-    ir_norm_env_aligned = gt_filter.get_ir(is_env_aligned=True)
-    ir_norm_all_aligned = gt_filter.get_ir(is_env_aligned=True,
-                                           is_fine_aligned=True)
-
-    # plot ir
-    if not os.path.exists('images'):
-        os.mkdir('images')
-
-    fig_ir_eq = gt_filter.plot_ir_spec(ir_equation,gt_filter.fs,gt_filter.cfs)
-    fig_ir_eq.savefig('images/ir_equation.png')
-
-    fig_ir = gt_filter.plot_ir_spec(ir,gt_filter.fs,gt_filter.cfs)
-    fig_ir.savefig('images/ir.png')
-
-    fig_norm = gt_filter.plot_ir_spec(ir_norm,gt_filter.fs,gt_filter.cfs)
-    fig_norm.savefig('images/ir_norm.png')
-
-    fig_ir_norm_env_aligned = gt_filter.plot_ir_spec(ir_norm_env_aligned,
-                                                     gt_filter.fs,
-                                                     gt_filter.cfs)
-    fig_ir_norm_env_aligned.savefig('images/ir_norm_env_aligned.png')
-
-    fig_ir_norm_all_aligned = gt_filter.plot_ir_spec(ir_norm_all_aligned,
-                                                     gt_filter.fs,
-                                                     gt_filter.cfs)
-    fig_ir_norm_all_aligned.savefig('images/ir_norm_all_aligned.png')
-
-    gt_filter.filter_spectrum()
-
-def efficiency_check():
-    fs = 16e3
-    gt_filter = gtf(fs,freq_low=80,freq_high=5e3,n_band=16)
-
-    ir_duration = 1
-    N_sample = np.int(fs*ir_duration)
-    x = np.zeros((N_sample,1))
-    x[200] = 1
-
-    t_start = time.time()
-    ir_c = gt_filter.filter_c(x);
-    t_comsum_c = time.time()-t_start
-
-    t_start = time.time()
-    ir_py = gt_filter.filter_py(x)
-    t_comsum_py = time.time()-t_start
-
-    print('time consumed(s) \n \t {:<10}:{:.2f} \n\t {:<10}:{:.2f}'.format('c',t_comsum_c,'python',t_comsum_py))
 
 if __name__ == '__main__':
     if 'example' in sys.argv:
         example()
     if 'efficiency' in sys.argv:
-        
+
         efficiency_check()
 
     if 'ir_python' in sys.argv:
@@ -536,3 +422,6 @@ if __name__ == '__main__':
         irs = gt_filter.filter_py(x,is_aligned=True)
         fig = gt_filter.plot_ir_spec(irs,gt_filter.fs,gt_filter.cfs)
         fig.savefig('test.png')
+
+    if 'phase_compensation' in sys.argv:
+        phase_compensation_test()
