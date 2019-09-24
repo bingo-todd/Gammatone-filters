@@ -11,11 +11,24 @@ Gammatone filter can be regarded as low-pass filter with frequency shitfted by f
 
 Details, see [README.pdf](README.pdf), currently written in Chinese, but most part are math equations.
 
-## Filter spectrum
+## Spectrum of filter
 
-  <center> <img src='images\filter_spectrum\filter_spectrum.png'> </center>
+  Filer with cf=4kHz
 
-## Gain normalization
+  <center> <img src='images\filter_spectrum\amp_phase_spectrum.png'> </center>
+
+  - Amplitude spectrum
+    - Not normalized
+
+  - Phase spectrum
+    - Phase displacement at cf approximately equal 0 [see](#Gainnormalization)
+    - As frequency move away from cf, phase displacement increase
+
+    Convert phase displacement to time delay
+    <center> <img src='images\filter_spectrum\amp_delay_spectrum.png'> </center>
+
+
+## Gainnormalization
 
   <center> <img src='images\gain_normalization\delay_gain.png'> </center>
 
@@ -24,7 +37,7 @@ Details, see [README.pdf](README.pdf), currently written in Chinese, but most pa
   <center> <img src='images\gain_normalization\irs_norm.png'> </center>
 
 
-## Phase compensation
+## Phasecompensation
 
   Phase compensation is actually to align the peaks of all filter impulse response[^Brown1994].
 
