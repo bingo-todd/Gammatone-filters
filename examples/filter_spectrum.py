@@ -37,7 +37,7 @@ def filter_spectrum():
     color = 'tab:red'
     ha1.semilogy(freq_bins/1000,amp_spectrum,color=color,linewidth=linewidth)
     ha1.set_ylabel('dB',color=color )
-    ha1.set_xlabel('frequency(kHz)')
+    ha1.set_xlabel('Frequency(kHz)')
     ha1.tick_params(axis='y',labelcolor=color)
     ha1.set_title('cf=4kHz')
 
@@ -58,7 +58,7 @@ def filter_spectrum():
     color = 'tab:red'
     ha1.semilogy(freq_bins/1000,amp_spectrum,color=color,linewidth=linewidth)
     ha1.set_ylabel('dB',color=color )
-    ha1.set_xlabel('frequency(kHz)')
+    ha1.set_xlabel('Frequency(kHz)')
     ha1.tick_params(axis='y',labelcolor=color)
     ha1.set_title('cf=4kHz')
 

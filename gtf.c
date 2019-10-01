@@ -26,7 +26,7 @@ void free_mem(double* ptr){
 }
 
 
-double* gtf(double*x,int x_len,int fs, double*cfs, double*bs, int n_band,
+double* gtf(double*x,int x_len,int fs, double*cfs, double*bws, int n_band,
             int is_env_aligned, int is_fine_aligned, int delay_common,
             int is_gain_norm){
 
@@ -54,7 +54,7 @@ double* gtf(double*x,int x_len,int fs, double*cfs, double*bs, int n_band,
     if(is_env_aligned == 1){
       max_delay = 0;
       for(band_i=0;band_i<n_band;band_i++){
-        delays[band_i] = round(3.0/(2.0*pi*bs[band_i])*fs);
+        delays[band_i] = round(3.0/(2.0*pi*bws[band_i])*fs);
         if(delays[band_i]>max_delay){ // find maximum delays
           max_delay = delays[band_i];
         }
@@ -75,7 +75,7 @@ double* gtf(double*x,int x_len,int fs, double*cfs, double*bs, int n_band,
         // initiation of filter states
         memset(p,0,sizeof(double)*10);
 
-        k = exp(-tpt*bs[band_i]);
+        k = exp(-tpt*bws[band_i]);
         // filter coefficients
         a[0] = 1; a[1] = 4*k; a[2] = -6*k*k; a[3]=4*pow(k,3); a[4]=-pow(k, 4);
         b[0] = 1; b[1] = 1;   b[2] = 4*k;    b[3] = k*k;
@@ -85,11 +85,11 @@ double* gtf(double*x,int x_len,int fs, double*cfs, double*bs, int n_band,
           gain_band = pow(1-k,4)/(1+4*k+k*k)*2;
         }
         else{
-          gain_band = 1;
+          gain_band = pow(1.0/fs,3);
         }
         // aligned filter ir fine-structure
         if(is_fine_aligned==1){
-          phi0 = round(-3.0*cfs[band_i]/bs[band_i]*fs)/fs;
+          phi0 = -3.0*cfs[band_i]/bws[band_i];
         }
         else{
           phi0 = 0;
@@ -102,7 +102,7 @@ double* gtf(double*x,int x_len,int fs, double*cfs, double*bs, int n_band,
         and summation
         */
         freq_shiftor_step[0] = cos(tpt*cfs[band_i]);
-        freq_shiftor_step[1] = sin(tpt*cfs[band_i]);
+        freq_shiftor_step[1] = sin(-tpt*cfs[band_i]);
 
         freq_shiftor_pre[0] = freq_shiftor_step[0];
         freq_shiftor_pre[1] = -freq_shiftor_step[1];
@@ -124,7 +124,7 @@ double* gtf(double*x,int x_len,int fs, double*cfs, double*bs, int n_band,
             }
             else{
                 p[0][0] = x[sample_i]*freq_shiftor[0];
-                p[0][1] = -x[sample_i]*freq_shiftor[1];
+                p[0][1] = x[sample_i]*freq_shiftor[1];
                 //
                 complex_multiply(p[0],phi0_complex);
             }
@@ -143,7 +143,7 @@ double* gtf(double*x,int x_len,int fs, double*cfs, double*bs, int n_band,
 
             // final output = real part of filte result
             if(sample_i>=delay_band){
-                y[band_i*x_len+sample_i-delay_band] = gain_band*(u0[0]*freq_shiftor[0] -
+                y[band_i*x_len+sample_i-delay_band] = gain_band*(u0[0]*freq_shiftor[0] +
                                                                  u0[1]*freq_shiftor[1]);
             }
             // update filter states

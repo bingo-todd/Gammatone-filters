@@ -21,7 +21,7 @@ def efficiency_check():
     ir_py = gt_filter.filter_py(x)
     t_comsum_py = time.time()-t_start
 
-    print('time consumed(s) for filtering signal with length of 16e3 \n\
+    print('time consumed(s) for filtering signal with length of 16e3 samples\n\
            {:<10}:{:.2f} \n\
            {:<10}:{:.2f}'.format('c',t_comsum_c,
                                  'python',t_comsum_py))

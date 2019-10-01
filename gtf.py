@@ -73,7 +73,7 @@ class gtf:
                                      freq_high=cf_high,
                                      N=n_band)
         # bandwidths
-        bws = self.cal_ERB(cfs)
+        bws = self.cal_bw(cfs)
         if (cfs is None) or (bws is None):
             raise Exception('cfs and bws uninitlaized')
 
@@ -155,9 +155,17 @@ class gtf:
         """calculate the ERB(Hz) of given center frequency based on equation
         given by Glasberg and Moore
         Args
-            cf: center frequency Hz
+            cf: center frequency Hz, single value or numpy array
         """
         return 24.7*(4.37*cf/1000+1.0)
+
+    def cal_bw(self,cf):
+        """calculate the 3-dB bandwidth
+        Args
+            cf: center frequency Hz, single value or numpy array
+        """
+        erb = self.cal_ERB(cf)
+        return 1.019*erb
 
 
     def filter_py(self,x,is_aligned=False,delay_common=None):
@@ -273,13 +281,9 @@ class gtf:
         return np.squeeze(x_filtered)
 
 
-    def cal_delay_gain_cfs(self,is_plot=False,fig=None):
-        """ Calculate delay and center-frequency gain of gammatone filter
+    def plot_delay_gain_cfs(self):
+        """ Plot delay and center-frequency gain of gammatone filter
         before alignment and gain-normalization
-        Returns:
-            [delays,gains]
-            the delays and gains at center freuqency of each frequency band
-            delays: in milisecond
         """
         k = np.exp(-2*np.pi/self.fs*self.bws);
         Q = np.divide(self.cfs,self.bws) # quality of filter
@@ -292,20 +296,67 @@ class gtf:
         correct_factor = np.sqrt(((temp2+1)**2+temp1**2)/((temp2+2)**2+temp1**2))
         gains = 10*np.log10(3/(2*np.pi*self.bws))*correct_factor
 
-        if is_plot:
-            if fig is None:
-                fig = plt.figure(figsize=[8,3])#,dpi=100)
-            else:
-                fig.set_size_inches(8,3)
+        fig = plt.figure(figsize=[8,3])
+        axes = fig.subplots(1,2)
+        # gains at cfs
+        axes[0].plot(self.cfs/1000,gains,linewidth=2);
+        axes[0].set_xlabel('Center frequency(kHz)');
+        axes[0].set_ylabel('Gain(dB)');
+        # delay at cfs
+        axes[1].plot(self.cfs/1000,delays,linewidth=2);
+        axes[1].set_yscale('log')
+        axes[1].set_xlabel('Center frequency(kHz)');
+        axes[1].set_ylabel('Delay(ms)');
+        plt.tight_layout()
 
-            axes = fig.subplots(1,2)
-            axes[0].plot(self.cfs,delays); axes[0].set_yscale('log')
-            axes[0].set_xlabel('Frquency(Hz)'); axes[0].set_ylabel('Delay(ms)');
-            axes[1].plot(self.cfs,gains);
-            axes[1].set_xlabel('Frquency(Hz)'); axes[1].set_ylabel('Gain(dB)');
-            plt.tight_layout()
+        return fig
 
-        return [delays,gains]
+
+    def plot_filter_spectrum(self,cf=4e3):
+        order = 4
+        fs = self.fs
+        bw = self.cal_ERB(cf)
+        freq_bins = np.arange(1,fs/2) # frequency resolution: 1Hz
+        # n_freq_bin = freq_bins.shape[0]
+        gain_func = 6/((2*np.pi*bw)**order)*\
+                            (np.divide(1,1+1j*(freq_bins-cf)/bw)**order+
+                             np.divide(1,1+1j*(freq_bins+cf)/bw)**order)
+
+        amp_spectrum = np.abs(gain_func)
+
+        phase_spectrum = np.angle(gain_func)
+        cf_bin_index = np.int16(cf)
+        # unwrap based on phase at cf
+        phase_spectrum[:cf_bin_index] = np.flip(np.unwrap(np.flip(phase_spectrum[:cf_bin_index])))
+        phase_spectrum[cf_bin_index:] = np.unwrap(phase_spectrum[cf_bin_index:])
+        # delays = np.divide(phase_spectrum,freq_bins)
+
+        linewidth = 2
+        # Amplitude-phase spectrum
+        fig = plt.figure()
+        axes1 = fig.subplots(1,1)
+        color = 'tab:red'
+        axes1.semilogy(freq_bins/1000,amp_spectrum,
+                        color=color,linewidth=linewidth,
+                        label='amp')
+        axes1.set_ylabel('dB',color=color )
+        axes1.set_xlabel('Frequency(kHz)')
+        axes1.legend(loc='upper left')
+        axes1.tick_params(axis='y',labelcolor=color)
+        axes1.set_title('cf={}Hz'.format(cf))
+
+        axes2 = axes1.twinx()
+        color='tab:blue'
+        axes2.plot(freq_bins/1000,phase_spectrum,
+                   color=color,linewidth=linewidth,
+                   label='phase')
+        axes2.legend(loc='upper right')
+        axes2.plot([cf/1000,cf/1000],[-8,8],'-.',color='black')
+        axes2.plot([0,fs/2/1000],[0,0],'-.',color='black')
+        axes2.set_ylabel('phase(rad)',color=color )
+        axes2.tick_params(axis='y',labelcolor=color)
+
+        return fig
 
 
     def plot_ir_spec(self,ir,fs=None,cfs=None,fig=None):
@@ -317,8 +368,10 @@ class gtf:
             title: title for ir waveform sub-panel
         """
 
-        if fs == None:
+        if fs is None:
             fs = self.fs
+        if cfs is None:
+            cfs = self.cfs
 
         ir_len = ir.shape[1]
         N_fft = ir_len
@@ -335,7 +388,7 @@ class gtf:
         x_lim_max = 0.08
         linewidth = 2
         if fig is None:
-            fig = plt.figure(figsize=[8,6])
+            fig = plt.figure(figsize=[8,3])
         axes = fig.subplots(1,2)
         axes[0].plot(time_ticks,ir.T,linewidth=linewidth);
         axes[0].set_xlabel('Time(s)');
@@ -371,7 +424,7 @@ class gtf:
         N_sample = np.int(self.fs*ir_duration)
         # impulse stimuli
         x = np.zeros((N_sample,1))
-        x[200] = 1# spike
+        x[100] = 1# spike
         irs = self.filter_c(x,is_env_aligned,is_fine_aligned,delay_common,
                             is_gain_norm)
         return irs
@@ -393,35 +446,4 @@ class gtf:
             part2 = np.multiply(np.cos(2*np.pi*self.cfs[band_i]*t),np.exp(-2*np.pi*self.bws[band_i]*t))
             ir[band_i] = np.multiply(part1,part2)
 
-
-        delay_size = np.int16(20e-3*self.fs)
-        ir = np.concatenate((np.zeros((self.n_band,delay_size)),ir[:,:-delay_size]),axis=1)
         return ir
-
-
-
-
-
-
-
-
-if __name__ == '__main__':
-    if 'example' in sys.argv:
-        example()
-    if 'efficiency' in sys.argv:
-
-        efficiency_check()
-
-    if 'ir_python' in sys.argv:
-        fs = 16e3
-        gt_filter = gtf(fs,freq_low=80,freq_high=1e3,n_band=4)
-        ir_duration = 1
-        N_sample = np.int(fs*ir_duration)
-        x = np.zeros((N_sample,1))
-        x[200] = 1
-        irs = gt_filter.filter_py(x,is_aligned=True)
-        fig = gt_filter.plot_ir_spec(irs,gt_filter.fs,gt_filter.cfs)
-        fig.savefig('test.png')
-
-    if 'phase_compensation' in sys.argv:
-        phase_compensation_test()
