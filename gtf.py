@@ -238,7 +238,7 @@ class gtf:
         return np.squeeze(y)
 
 
-    def filter_c(self, x, is_env_aligned=False, is_fine_aligned=False,
+    def filter(self, x, is_env_aligned=False, is_fine_aligned=False,
                  delay_common=-1, is_gain_norm=True):
         """filter input signal using c library
         Args:
@@ -264,7 +264,7 @@ class gtf:
         # ensure x is 2-D array
         x_len = x.shape[0]
         if len(x.shape) == 1:
-            x.shape = (x_len,1)
+            x=np.reshape(x,[-1,1])
         n_chann = x.shape[1]
 
         # convert bool values to int values(0,1) as the inputs of c function
@@ -425,7 +425,7 @@ class gtf:
         # impulse stimuli
         x = np.zeros((N_sample,1))
         x[100] = 1# spike
-        irs = self.filter_c(x,is_env_aligned,is_fine_aligned,delay_common,
+        irs = self.filter(x,is_env_aligned,is_fine_aligned,delay_common,
                             is_gain_norm)
         return irs
 

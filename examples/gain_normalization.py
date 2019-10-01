@@ -10,10 +10,6 @@ fig_dir = '../images/gain_normalization/'
 if not os.path.exists(fig_dir):
     os.makedirs(fig_dir)
 
-def savefig(fig,fig_name):
-    fig_fpath = os.path.join(fig_dir,fig_name)
-    fig.savefig(fig_fpath)
-
 
 def gain_norm_test():
     fs = 16e3

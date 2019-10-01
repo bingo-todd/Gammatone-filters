@@ -14,7 +14,7 @@ def efficiency_check():
     x = np.random.rand(fs)
 
     t_start = time.time()
-    ir_c = gt_filter.filter_c(x);
+    ir_c = gt_filter.filter(x);
     t_comsum_c = time.time()-t_start
 
     t_start = time.time()
