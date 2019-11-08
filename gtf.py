@@ -71,7 +71,7 @@ class gtf:
         # center frequencies
         cfs = self.divide_freq_space(freq_low=cf_low,
                                      freq_high=cf_high,
-                                     N=n_band)
+                                     n_band=n_band)
         # bandwidths
         bws = self.cal_bw(cfs)
         if (cfs is None) or (bws is None):
@@ -106,7 +106,7 @@ class gtf:
 
         CParams = CParamsType()
         #double* gtf(double*x, int x_len,
-        #            int fs, double*cfs, double*bs, int N_band,
+        #            int fs, double*cfs, double*bs, int n_band,
         #            int is_env_aligned, int is_fine_aligned, int delay_common,
         #            int is_gain_norm)
         self._gt_filter.argtypes = (CParams,ctypes.c_int,
@@ -120,22 +120,22 @@ class gtf:
         self._free_mem.restype = None
 
 
-    def divide_freq_space(self,freq_low,freq_high,N,divide_type='ERB'):
+    def divide_freq_space(self,freq_low,freq_high,n_band,divide_type='ERB'):
         """Divide frequency range (freq_low~freq_high) equally in erb
         scale(default)
         Args:
             freq_low: low bound of frequency range
             freq_high: high bound of frequency range
-            N: segments number frequency range to be divided
+            n_band: segments number frequency range to be divided
             divide_type: default to ERB
         """
         if divide_type is 'ERB':
-            if N == 1:
+            if n_band == 1:
                 return np.asarray(freq_low,dtype=np.float).reshape(1,)
             low_erb = self.Hz2ERbwscal(freq_low)
             high_erb = self.Hz2ERbwscal(freq_high)
-            erb_elem = (high_erb-low_erb)/(N-1)
-            f = self.ERbwscal2Hz(low_erb+erb_elem*np.arange(N))
+            erb_elem = (high_erb-low_erb)/(n_band-1)
+            f = self.ERbwscal2Hz(low_erb+erb_elem*np.arange(n_band))
         else:
             raise Exception('unsupport Divide type')
         return f
