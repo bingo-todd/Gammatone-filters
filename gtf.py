@@ -42,7 +42,7 @@ class gtf:
         a python version filters is also included"""
 
     _package_dir = os.path.dirname(os.path.abspath(__file__))
-    _lib_path = os.path.join(_package_dir,'libgtf.so')
+    _lib_fpath = os.path.join(_package_dir,'libgtf.so')
 
     def __init__(self,fs,cf_low=None,cf_high=None,
                  freq_low=None,freq_high=None,
@@ -91,17 +91,17 @@ class gtf:
     def _load_lib(self):
         """Load c library
         """
-        if not os.path.exists(self._lib_path):
+        if not os.path.exists(self._lib_fpath):
             c_file_path = os.path.join(self._package_dir,'gtf.c')
             if not os.path.exists(c_file_path):
                 raise OSError(0,'missing file','libgtf.so and gtf.c')
             else:
                 print('missing libgtf.so, compile from C code')
                 os.system('gcc -fPIC -shared {} -o {}'.format(c_file_path,
-                                                                self._lib_path))
+                                                                self._lib_fpath))
                 print('compile success')
 
-        _cmodel = ctypes.cdll.LoadLibrary(self._lib_path)
+        _cmodel = ctypes.cdll.LoadLibrary(self._lib_fpath)
         self._gt_filter = _cmodel.gtf
 
         CParams = CParamsType()
