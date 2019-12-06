@@ -26,7 +26,7 @@ void free_mem(double* ptr){
 }
 
 
-double* gtf(double*x,int x_len,int fs, double*cfs, double*bws, int n_band,
+double* GTF(double*x,int x_len,int fs, double*cfs, double*bws, int n_band,
             int is_env_aligned, int is_fine_aligned, int delay_common,
             int is_gain_norm){
 

@@ -37,12 +37,13 @@ class CParamsType:
         return param.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
 
 
-class gtf:
+class GTF:
     """Python interface for all-pole gammatone filters wrote using C
         a python version filters is also included"""
 
     _package_dir = os.path.dirname(os.path.abspath(__file__))
-    _lib_fpath = os.path.join(_package_dir,'libgtf.so')
+    _lib_fpath = os.path.join(_package_dir,'libGTF.so')
+    _c_fpath = os.path.join(_package_dir,'GTF.c')
 
     def __init__(self,fs,cf_low=None,cf_high=None,
                  freq_low=None,freq_high=None,
@@ -92,20 +93,19 @@ class gtf:
         """Load c library
         """
         if not os.path.exists(self._lib_fpath):
-            c_file_path = os.path.join(self._package_dir,'gtf.c')
-            if not os.path.exists(c_file_path):
-                raise OSError(0,'missing file','libgtf.so and gtf.c')
+            if not os.path.exists(self._c_fpath):
+                raise OSError(0,'missing file','libGTF.so and GTF.c')
             else:
-                print('missing libgtf.so, compile from C code')
-                os.system('gcc -fPIC -shared {} -o {}'.format(c_file_path,
-                                                                self._lib_fpath))
+                print('missing libGTF.so, compile from C code')
+                os.system('gcc -fPIC -shared {} -o {}'.format(self._c_fpath,
+                                                              self._lib_fpath))
                 print('compile success')
 
         _cmodel = ctypes.cdll.LoadLibrary(self._lib_fpath)
-        self._gt_filter = _cmodel.gtf
+        self._gt_filter = _cmodel.GTF
 
         CParams = CParamsType()
-        #double* gtf(double*x, int x_len,
+        #double* GTF(double*x, int x_len,
         #            int fs, double*cfs, double*bs, int n_band,
         #            int is_env_aligned, int is_fine_aligned, int delay_common,
         #            int is_gain_norm)
@@ -132,21 +132,21 @@ class gtf:
         if divide_type is 'ERB':
             if n_band == 1:
                 return np.asarray(freq_low,dtype=np.float).reshape(1,)
-            low_erb = self.Hz2ERbwscal(freq_low)
-            high_erb = self.Hz2ERbwscal(freq_high)
+            low_erb = self.Hz2ERBscal(freq_low)
+            high_erb = self.Hz2ERBscal(freq_high)
             erb_elem = (high_erb-low_erb)/(n_band-1)
-            f = self.ERbwscal2Hz(low_erb+erb_elem*np.arange(n_band))
+            f = self.ERBscal2Hz(low_erb+erb_elem*np.arange(n_band))
         else:
             raise Exception('unsupport Divide type')
         return f
 
 
-    def Hz2ERbwscal(self,freq):
+    def Hz2ERBscal(self,freq):
         """convert Hz to ERB scale"""
         return 21.4*np.log10(4.37*freq/1e3+1)
 
 
-    def ERbwscal2Hz(self,erb_num):
+    def ERBscal2Hz(self,erb_num):
         """convert ERB scale to Hz"""
         return (10**(erb_num/21.4)-1)/4.37*1e3
 
@@ -242,8 +242,8 @@ class gtf:
                  delay_common=-1, is_gain_norm=True):
         """filter input signal using c library
         Args:
-            x: signal with shape of [x_len,n_band], if x only has single
-               dimension, n_band will be added as 1
+            x: signal with shape of [x_len,n_chann], if x only has single
+               dimension, n_chann will be added as 1
             is_env_aligned: whether to align the envelope of ir,default to False
             is_fine_aligned: whether to align the fine-structure if envelope is
                              aligned, default to False
@@ -257,6 +257,8 @@ class gtf:
         # check inputs
         if not isinstance(x,np.ndarray): #
             raise Exception()
+
+        x = x.copy()
 
         if len(x.shape) > 2:
             raise Exception('two many dimensions for x')
