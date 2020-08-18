@@ -23,103 +23,110 @@ cfs = [100 393  948 2000]
 ```
 
 <table>
-<tr> <td>Detly</td> <td> <img src='/images/validate/reference.png'> </td> </tr>
+<tr> <td>Detly</td> <td> <img src='examples/images/validate/reference.png'> </td> </tr>
 <tr>
-<td> Current </td> <td> <img src='/images/validate/proposed.png'> </td>
+<td> Current </td> <td> <img src='examples/images/validate/proposed.png'> </td>
 </tr>
 </table>
 
 
+
+
 ## Spectrum of filter
 
-  Taking filter with $$f_c=4kHz$$ as example, the amplitude spectrum $$gain(f)$$ and phase spectrum $$\phi(f)$$ is plotted as follow
+Taking filter with $f_c=4kHz$ as example, the amplitude spectrum $$gain(f)$$ and phase spectrum $$\phi(f)$$ is plotted as follow
 
   <table align="center">
   <tr>
   <td align=center> amp & phase </td>
   <td align=center> amp & delay </td> </tr>
   <tr>
-  <td> <img src='/images/filter_spectrum/amp_phase_spectrum.png' width="400"> </td>
-  <td> <img src='/images/filter_spectrum/amp_delay_spectrum.png' width="400"> </td>
+  <td> <img src='examples/images/filter_spectrum/amp_phase_spectrum.png' width="400"> </td>
+  <td> <img src='examples/images/filter_spectrum/amp_delay_spectrum.png' width="400"> </td>
   </tr>
   </table>
 
   As shown in figure,
-  - $$\phi(f_c)\approx 0$$;
+
+  - $ \phi(f_c)\approx 0 $;
   - Amplitude of $$\phi(f)$$ increase as $$f$$ move away from $$f_c$$;
 
   Gain and delay at cf as function of cf
-  <center> <img src='/images/gain_normalization/delay_gain.png'> </center>
-
+  <center> <img src='examples/images/gain_normalization/delay_gain.png'> </center>
 ## Gain normalization
 
   Gammatone filter is normalized by scaling filter gain at fc to 1
   - IRs before gain normalization
-  <center> <img src='/images/gain_normalization/irs.png'> </center>
-
+  <center> <img src='examples/images/gain_normalization/irs.png'> </center>
   - IRs after gain normalization
-  <center> <img src='/images/gain_normalization/irs_norm.png'> </center>
-
-
+  <center> <img src='examples/images/gain_normalization/irs_norm.png'> </center>
 ## Phase compensation
 
   Phase compensation is actually to align the peaks of all filter impulse response[^Brown1994].
 
   The impulse response of Gammatone filter is given as
 
-  $$\begin{equation}
-  \begin{aligned}
-  g(t) = a\frac{t^{n-1}\cos(2\pi f_ct+\phi)}{e^{2\pi b t}}
-  \end{aligned}
-  \end{equation}$$
 
-  <center> <img src='/images/phase_compensation/irs.png' width="400"> </center>
+$$
+\begin{equation}
+\begin{aligned}
+g(t) = a\frac{t^{n-1}\cos(2\pi f_ct+\phi)}{e^{2\pi b t}}
+\end{aligned}
+\end{equation}$$
+$$
 
+  <center> <img src='examples/images/phase_compensation/irs.png' width="400"> </center>
   $$g(t)$$ can be be regarded as production of two parts :
 
-  $$\begin{equation}
+$$
+\begin{equation}
   \begin{aligned}
    g(t)=g_{amp}(t)\times g_{fine}(t)
   \end{aligned}
-  \end{equation}$$
+  \end{equation}
+$$
 
-  - Envelope parts:  $$\quad g_{amp}(t) = a\frac{t^{n-1}}{e^{2\pi b t}}$$
+  - Envelope parts:   $$\quad g_{amp}(t) = a\frac{t^{n-1}}{e^{2\pi b t}}$$
   - Fine structure part: $$\quad g_{fine}(t) = \cos(2\pi f_ct+\phi)$$
 
 ### Envelope alignment
-  The peak position $$t_{peak}$$ can be obtained by setting first-order derivative of $$g_{amp}(t)$$ to 0
+  The peak position $t_{peak}$ can be obtained by setting first-order derivative of $g_{amp}(t)$ to 0
 
-  $$\begin{equation}
+$$
+\begin{equation}
   \begin{aligned}
   \frac{\partial g_{amp}(t)}{\partial t} &= \frac{(n-1)t^{n-2}}{e^{2\pi bt}}-\frac{t^{n-1}2\pi b}{e^{2\pi bt}}\\
   &=\frac{t^{n-2}}{e^{2\pi bt}}(n-1-2\pi bt) \triangleq 0\\
   \Rightarrow& \quad t_{peak}=\frac{(n-1)}{2\pi b}
   \end{aligned}
-  \end{equation}$$
+  \end{equation}
+$$
+  Delay $g_{amp}$ by $-t_{peak}$ to align the peaks of filter bank
 
-  Delay $$g_{amp}$$ by $$-t_{peak}$$ to align the peaks of filter bank
-
-  $$\begin{equation}
+$$
+\begin{equation}
   \begin{aligned}
   g_{align}(t) = g_{amp}(t-\tau)g_{fine}(t)
   \end{aligned}
-  \end{equation}$$
+  \end{equation}
+$$
+
 
   Example of $$g_{align}$$ ($$\phi$$ is set to 0)
-  <center> <img src='/images/phase_compensation/irs_env_aligned.png' width="400"> </center>
-
+  <center> <img src='examples/images/phase_compensation/irs_env_aligned.png' width="400"> </center>
 ### Fine structure alignment
   Further more, align $$g_{fine}(t)$$
 
-  $$\begin{equation}
+$$
+  \begin{equation}
   \begin{aligned}
   & \cos(2\pi f_ct+\phi)|_{t=t_{max}} \triangleq 1\\
   \Rightarrow& \quad  \phi = -\frac{(n-1)f_c}{b}+i2\pi, \quad i=0,\pm 1,\cdots
   \end{aligned}
-  \end{equation}$$
+  \end{equation}
+$$
 
-  <center> <img src='/images/phase_compensation/irs_all_aligned.png' width="400"></center>
-
+  <center> <img src='examples/images/phase_compensation/irs_all_aligned.png' width="400"></center>
 ### Illustration of purpose of alignment
 
   For a stimulus of impulse, what if we add up all filter outpus ?  Ideally, a impulse is expected
@@ -131,9 +138,9 @@ cfs = [100 393  948 2000]
   <td align=center> Envelop & fine structure aligned </td>
   </tr>
   <tr>
-  <td> <center> <img src='/images/stimulus_restore/irs.png'> </center> </td>
-  <td>   <center> <img src='/images/stimulus_restore/irs_env_aligned.png'> </center> </td>
-  <td>   <center> <img src='/images/stimulus_restore/irs_all_aligned.png'></center> </td>
+  <td> <center> <img src='examples/images/stimulus_restore/irs.png'> </center> </td>
+  <td>   <center> <img src='examples/images/stimulus_restore/irs_env_aligned.png'> </center> </td>
+  <td>   <center> <img src='examples/images/stimulus_restore/irs_all_aligned.png'></center> </td>
   </tr>
   </table>
 
@@ -149,7 +156,7 @@ cfs = [100 393  948 2000]
 ## Built-in examples
 
 Corresponding to above-mentioned tests
- 
+
 ```
 validate.py
 efficiency.py
