@@ -21,16 +21,16 @@ void complex_multiply(double a[2], double b[2]){
   a[1] = tmp[0]*b[1]+tmp[1]*b[0];
 }
 
+
 void free_mem(double* ptr){
   free(ptr);
 }
 
 
-double* GTF(double*x,int x_len,int fs, double*cfs, double*bws, int n_band,
+double* GTF(double*y, double*x,int x_len,int fs, double*cfs, double*bws, int n_band,
             int is_env_aligned, int is_fine_aligned, int delay_common,
             int is_gain_norm){
 
-    double* y = (double*)malloc(sizeof(double)*x_len*n_band);// filter result
     int* delays = (int*)malloc(sizeof(int)*n_band); // for aligning
     double phi0,phi0_complex[2];
     double gain_band = 1; //
@@ -50,11 +50,15 @@ double* GTF(double*x,int x_len,int fs, double*cfs, double*bws, int n_band,
 
     int band_i, sample_i, order;
 
-    // calculate delay for each band
+    // FILE* logger = fopen("log.txt", "w");
+    // fprintf(logger, "%d %d %d %d", is_env_aligned, is_fine_aligned, delay_common, is_gain_norm);
+    // fclose(logger);
+    
+    // calculate delay of each band
     if(is_env_aligned == 1){
       max_delay = 0;
       for(band_i=0;band_i<n_band;band_i++){
-        delays[band_i] = round(3.0/(2.0*pi*bws[band_i])*fs);
+        delays[band_i] = round(3.0/(2.0*pi*bws[band_i])*fs)/fs;  // integer samples
         if(delays[band_i]>max_delay){ // find maximum delays
           max_delay = delays[band_i];
         }
@@ -96,26 +100,27 @@ double* GTF(double*x,int x_len,int fs, double*cfs, double*bws, int n_band,
         }
         phi0_complex[0] = cos(phi0);
         phi0_complex[1] = sin(phi0);
+
         /*
         computation acceleration
         convert cos(\phi1+\ph2) and sin(\phi1+\phi2) into mutliplication
         and summation
         */
         freq_shiftor_step[0] = cos(tpt*cfs[band_i]);
-        freq_shiftor_step[1] = sin(-tpt*cfs[band_i]);
+        freq_shiftor_step[1] = -sin(tpt*cfs[band_i]);
 
         freq_shiftor_pre[0] = freq_shiftor_step[0];
         freq_shiftor_pre[1] = -freq_shiftor_step[1];
 
         delay_band = delays[band_i]-delay_common;
         for(sample_i=0; sample_i<x_len+delay_band; sample_i++){
-            freq_shiftor[0] = (freq_shiftor_pre[0]*freq_shiftor_step[0] -
-                               freq_shiftor_pre[1]*freq_shiftor_step[1]);
-            freq_shiftor[1] = (freq_shiftor_pre[1]*freq_shiftor_step[0] +
-                               freq_shiftor_pre[0]*freq_shiftor_step[1]);
+            freq_shiftor[0] = (freq_shiftor_pre[0]*freq_shiftor_step[0] 
+			    - freq_shiftor_pre[1]*freq_shiftor_step[1]);
+            freq_shiftor[1] = (freq_shiftor_pre[1]*freq_shiftor_step[0] 
+			    + freq_shiftor_pre[0]*freq_shiftor_step[1]);
             freq_shiftor_pre[0] = freq_shiftor[0];
             freq_shiftor_pre[1] = freq_shiftor[1];
-
+	    
             // denominator part of filter equation
             // equivalent to add zeros to the end of x
             if(sample_i>=x_len){
@@ -123,10 +128,9 @@ double* GTF(double*x,int x_len,int fs, double*cfs, double*bws, int n_band,
                 p[0][1] = 0;
             }
             else{
-                p[0][0] = x[sample_i]*freq_shiftor[0];
-                p[0][1] = x[sample_i]*freq_shiftor[1];
-                //
-                complex_multiply(p[0],phi0_complex);
+		p[0][0] = x[sample_i]*freq_shiftor[0];
+		p[0][1] = x[sample_i]*freq_shiftor[1];
+                complex_multiply(p[0], phi0_complex);
             }
 
             for(order=1;order<=4;order++){
@@ -143,8 +147,8 @@ double* GTF(double*x,int x_len,int fs, double*cfs, double*bws, int n_band,
 
             // final output = real part of filte result
             if(sample_i>=delay_band){
-                y[band_i*x_len+sample_i-delay_band] = gain_band*(u0[0]*freq_shiftor[0] +
-                                                                 u0[1]*freq_shiftor[1]);
+                y[band_i*x_len+sample_i-delay_band] = gain_band*(u0[0]*freq_shiftor[0]+u0[1]*freq_shiftor[1]);
+		// fprintf(logger, "%f\n", y[band_i*x_len+sample_i-delay_band]);
             }
             // update filter states
             for(order=4;order>=1;order--){

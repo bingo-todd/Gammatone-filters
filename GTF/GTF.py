@@ -2,38 +2,7 @@ import ctypes
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-# from numpy.ctypeslib import ndpointer
-
-
-class CParamsType:
-    """Data type convertor for c function arguments"""
-    def from_param(self, param):  # called by ctypes
-        typename = type(param).__name__
-        if hasattr(self, 'from_'+typename):
-            return getattr(self, 'from_'+typename)(param)
-        elif isinstance(param, ctypes.Array):
-            return param
-        else:
-            raise TypeError("Can't convert {}".format(typename))
-
-    def from_bool(self, param):
-        val = int(param)
-        return val
-
-    def from_array(self, param):
-        if param.typecode != 'd':
-            raise TypeError('must be an array of doubles')
-        ptr, _ = param.buffer_info()
-        return ctypes.cast(ptr, ctypes.POINTER(ctypes.c_double))
-
-    def from_list(self, param):
-        val = ((ctypes.c_double*len(param)))(*param)
-        return val
-
-    from_tuple = from_list  #
-
-    def from_ndarray(self, param):
-        return param.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+from numpy.ctypeslib import ndpointer
 
 
 class GTF:
@@ -101,16 +70,20 @@ class GTF:
         _cmodel = ctypes.cdll.LoadLibrary(self._lib_fpath)
         self._gt_filter = _cmodel.GTF
 
-        CParams = CParamsType()
-        # double* GTF(double*x, int x_len,
-        #            int fs, double*cfs, double*bs, int n_band,
-        #            int is_env_aligned, int is_fine_aligned, int delay_common,
-        #            int is_gain_norm)
-        self._gt_filter.argtypes = (CParams, ctypes.c_int,
-                                    ctypes.c_int, CParams, CParams,
-                                    ctypes.c_int, CParams, CParams,
-                                    ctypes.c_int, CParams)
-        self._gt_filter.restype = ctypes.POINTER(ctypes.c_double)
+        # double* GTF(double*x, int x_len, int fs,
+        #             double*cfs, double*bws, int n_band,
+        #             int is_env_aligned, int is_fine_aligned,
+        #             int delay_common, int is_gain_norm)
+        self._gt_filter.argtypes = (
+            ndpointer(ctypes.c_double, flags='C_CONTIGUOUS'),
+            ndpointer(ctypes.c_double, flags='C_CONTIGUOUS'),
+            ctypes.c_int, ctypes.c_int,
+            ndpointer(ctypes.c_double, flags='C_CONTIGUOUS'),
+            ndpointer(ctypes.c_double, flags='C_CONTIGUOUS'),
+            ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+            ctypes.c_int)
+        self._gt_filter.restype = None
+        # ctypes.POINTER(ctypes.c_double)
 
         self._free_mem = _cmodel.free_mem
         self._free_mem.argtypes = (ctypes.POINTER(ctypes.c_double),)
@@ -161,12 +134,14 @@ class GTF:
         erb = self.cal_ERB(cf)
         return 1.019*erb
 
-    def filter_py(self, x, is_aligned=False, delay_common=None):
+    def filter_py(self, x, align_env=False, align_tfs=False,
+                  delay_common=None):
         """Filters in Python
         Args:
         x: signal with shape of [x_len,n_band], if x only has single dimension,
         n_band will be added as 1
-        is_aligned: aligned peaks of Gammatone filter impulse response
+        align_env: aligned peaks of Gammatone filter impulse response
+        align_tfs: aligned the time fine structure
         delay_common: if aligned, give the same delay to all channels,
         default, aligned to the maximum delay
         Returns:
@@ -174,10 +149,6 @@ class GTF:
         """
         # constant variables
         tpt = 2*np.pi*(1.0/self.fs)
-
-        # check inputs
-        if not isinstance(x, np.ndarray):
-            raise Exception()
 
         x = x.copy()
         if len(x.shape) > 2:
@@ -188,7 +159,7 @@ class GTF:
             x = np.reshape(x, [-1, 1])
         n_chann = x.shape[1]
 
-        if is_aligned is True:
+        if align_env is True:
             delays = np.round(3.0/(2.0*np.pi*self.bws)*self.fs)/self.fs
             if delay_common is not None:
                 delay_common = np.max(delays)
@@ -196,19 +167,12 @@ class GTF:
         else:
             delays = np.zeros(self.n_band)
 
-        x_filtered = np.zeros((self.n_band, x_len, n_chann))
-
         # IIR and FIR filters outputs
         out_a = np.zeros((5, n_chann), dtype=np.complex)
         coefs_a = np.zeros(5)
         out_b = 0
         coefs_b = np.zeros(4)
 
-        # padd 0 to x, for the convinientce of delaying manipulation
-        x_padd = np.concatenate((x, np.zeros((
-                                        np.max(np.int16(delays*self.fs)),
-                                        n_chann))),
-                                axis=0)
         norm_factors = np.zeros(self.n_band)
         y = np.zeros((self.n_band, x_len, n_chann), dtype=np.float)
         for band_i in range(self.n_band):
@@ -221,26 +185,22 @@ class GTF:
             #
             norm_factors[band_i] = (1-k)**4/(1+4*k+k**2)*2
             delay_len_band = np.int(delays[band_i]*self.fs)
-            phi_0 = (-2*np.pi*cf
-                     * np.int(self.fs*3.0/(2.0*np.pi*self.bws[band_i]))
-                     / self.fs)
-            # 3.0/(2.0*np.pi*self.bws[band_i])
-            # phi_0 = 0
-            for sample_i in range(x_len+delay_len_band):
-                # 2*pi*cf*n/fs -2*pi*cf*delay
+            if align_tfs:
+                phi_init = -3.0*cf/self.bws[band_i]
+            else:
+                phi_init = 0
+            for sample_i in range(x_len):
                 freq_shiftor = np.exp(-1j*(tpt*cf*sample_i))
                 # IIR part
-                out_a[0, :] = x_padd[sample_i, :]*freq_shiftor*np.exp(1j*phi_0)
+                out_a[0, :] = x[sample_i, :]*freq_shiftor*np.exp(1j*phi_init)
                 for order_i in range(1, 5):
                     out_a[0, :] = (out_a[0, :]
                                    + coefs_a[order_i]*out_a[order_i, :])
-                    # if np.max(np.abs(out_a[order_i])) > 20:
-                    #     print(out_a[order_i])
                 # FIR part
                 out_b = 0
                 for order_i in range(1, 4):
                     out_b = out_b+coefs_b[order_i]*out_a[order_i, :]
-                    #
+
                 if sample_i > delay_len_band:
                     y[band_i, sample_i-delay_len_band, :] = (
                                     norm_factors[band_i]
@@ -284,27 +244,25 @@ class GTF:
         n_chann = x.shape[1]
 
         # convert bool values to int values(0,1) as the inputs of c function
-        x_filtered = np.zeros((self.n_band, x_len, n_chann))
+        x_band_all = []
         for chann_i in range(n_chann):
             # data in slice are not stored in continue memmory
-            x_chann = np.copy(x[:, chann_i])
-            temp = self._gt_filter(x_chann, x_chann.shape[0],
-                                   self.fs, self.cfs, self.bws, self.n_band,
-                                   is_env_aligned, is_fine_aligned,
-                                   delay_common, is_gain_norm)
-            x_filtered[:, :, chann_i] = np.array(
-                                            np.fromiter(
-                                                temp, dtype=np.float64,
-                                                count=x_len*self.n_band)
-                                                ).reshape(self.n_band, x_len)
-            self._free_mem(temp)  # avoid memmory leak
-        return np.squeeze(x_filtered)
+            x_band = np.zeros((self.n_band, x_len), dtype=np.float)
+            self._gt_filter(x_band,
+                            x[:, chann_i].astype(np.float),
+                            x_len,
+                            self.fs, self.cfs, self.bws, self.n_band,
+                            is_env_aligned, is_fine_aligned,
+                            delay_common, is_gain_norm)
+            x_band_all.append(x_band[:, :, np.newaxis])
+        x_filtered = np.concatenate(x_band_all, axis=2)
+        return x_filtered
 
     def plot_delay_gain_cfs(self):
         """ Plot delay and center-frequency gain of gammatone filter
         before alignment and gain-normalization
         """
-        k = np.exp(-2*np.pi/self.fs*self.bws)
+        # k = np.exp(-2*np.pi/self.fs*self.bws)
         Q = np.divide(self.cfs, self.bws)  # quality of filter
 
         temp1 = 8*Q*(1-4*Q**2)
