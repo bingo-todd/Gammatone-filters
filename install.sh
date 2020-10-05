@@ -1,3 +1,5 @@
-#!/usr/bin/env bash
-python setup.py sdist
-pip install dist/GTF-1.0.tar.gz
+#!/bin/sh
+
+dir=$(dirname $0)
+python ${dir}/setup.py ${dir}/sdist
+pip install ${dir}/dist/*.tar.gz
