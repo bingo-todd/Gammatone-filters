@@ -22,17 +22,20 @@ class GTF:
             freq_low,freq_high: the lowest and highest cutoff frequency
             n_band: frequency bands number
         """
+        self.bw_factor = 1.019
         # args check
         if cf_low is None:
             if freq_low is not None:
                 # set freq_low as the lowest cutoff frequency
-                cf_low = (2*freq_low+24.7)/(2-24.7*4.37/1000)
+                cf_low = ((2*freq_low+self.bw_factor*24.7)
+                          / (2-self.bw_factor*24.7*4.37/1000))
             else:
                 raise Exception('neither cf_low or freq_low is specified')
         if cf_high is None:
             if freq_high is not None:
                 # make freq_high as the highest cutoff frequency
-                cf_high = (2*freq_high-24.7)/(2+24.7*4.37/1000)
+                cf_high = ((2*freq_high-self.bw_factor*24.7)
+                           / (2+self.bw_factor*24.7*4.37/1000))
             else:
                 raise Exception('neither cf_high or freq_high is specified')
 
@@ -132,7 +135,7 @@ class GTF:
             cf: center frequency Hz, single value or numpy array
         """
         erb = self.cal_ERB(cf)
-        return 1.019*erb
+        return self.bw_factor*erb
 
     def filter_py(self, x, align_env=False, align_tfs=False,
                   delay_common=None):

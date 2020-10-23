@@ -13,8 +13,8 @@ Gammatone filter can be regarded as low-pass filter with frequency shitfted by c
 For details, see [digital filter design of gammatone filter](README.pdf), currently written in Chinese.
 
 
-## Validate, comparation with other module
-Detly has write a [python module](https://github.com/detly/gammatone) of gammatone filterbank based matlab code developed by Slaney.
+## Comparison with other module
+Detly has published a [python module](https://github.com/detly/gammatone) of gammatone filterbank.
 Using the sample settings, outputs of Detly module and current module are as follow:
 
 ```
@@ -30,7 +30,34 @@ cfs = [100 393  948 2000]
 </table>
 
 
+**Difference** 
 
+In Delty's code,  given the low and high frequencies($low\_freq$, $high\_freq$ and the number of bands($n$), $n+1$ frequency points are sampled equally in $ERB scale$, the first $n$ frequency points are used as the center frequency bands. This can be reasonable only if $n$  is appropriate, for example,
+
+<table>
+    <tr>
+        <td> n=4 </td>
+        <td> n=8 </td>
+        <td> n=16 </td>
+        <td> n=32 </td> 
+    </tr>
+    <tr>
+        <td><img src='examples/images/validate/cfs_n4.png'></td>
+        <td><img src='examples/images/validate/cfs_n8.png'></td>
+        <td><img src='examples/images/validate/cfs_n16.png'></td>
+        <td><img src='examples/images/validate/cfs_n32.png'></td>
+    </tr>
+</table>
+
+In this module, there are two ways to ways to specified the frequency range:
+
+1. freq_low, freq_high: the frequency range of ERB
+
+2. cf_low, cf_hight: the frequency range of center frequencies
+
+   eg, frequency range [70, 7000], n=4
+
+   <img src='examples/images/freq_range.png'>
 
 ## Spectrum of filter
 
