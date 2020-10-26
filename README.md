@@ -10,8 +10,6 @@ Gammatone filter can be regarded as low-pass filter with frequency shitfted by c
 2. Filter shifted signal with corresponding lowpass filter
 3. Shift the frequency of filtered signal back by cf.
 
-For details, see [digital filter design of gammatone filter](README.pdf), currently written in Chinese.
-
 
 ## Comparison with other module
 Detly has published a [python module](https://github.com/detly/gammatone) of gammatone filterbank.
