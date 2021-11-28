@@ -5,8 +5,9 @@ from GTF import GTF
 from BasicTools import wav_tools
 
 
-def specgram(x, frame_len, shift_len, fs, freq_low, freq_high, n_band,
-             fig_path=None, dpi=100):
+def cal_spectrogram(x, frame_len, frame_shift, fs,
+                    cfs=None, freq_low=None, freq_high=None, n_band=None,
+                    return_cfs=False, fig_path=None, dpi=100):
     """return shape [n_frame, n_band, n_channel]
     """
     if len(x.shape) == 2:
@@ -15,19 +16,18 @@ def specgram(x, frame_len, shift_len, fs, freq_low, freq_high, n_band,
         n_channel = 1
         x = np.reshape(x, [-1, 1])
 
-    gtf_filter = GTF(fs, freq_low=freq_low, freq_high=freq_high, n_band=n_band)
+    gtf_filter = GTF(
+        fs, cfs=cfs, freq_low=freq_low, freq_high=freq_high, n_band=n_band)
     # [x_len, n_band, n_channle]
     x_filtered = np.transpose(gtf_filter.filter(x), [1, 0, 2])
-    specgram = wav_tools.frame_data(x_filtered,
-                                    frame_len=frame_len,
-                                    shift_len=shift_len)
-    # [n_frame, n_band, n_channel]
-    specgram = np.log(np.sum(specgram**2, axis=1))
-    value_min, value_max = np.min(specgram), np.max(specgram)
+    spectrogram = wav_tools.frame_data(
+        x_filtered, frame_len=frame_len, frame_shift=frame_shift)
+    spectrogram = 10*np.log10(np.sum(spectrogram**2, axis=1))
+    value_min, value_max = np.min(spectrogram), np.max(spectrogram)
 
     if fig_path is not None:
-        n_frame = specgram.shape[0]
-        t_tick = (np.arange(n_frame)*shift_len+frame_len/2)/fs
+        n_frame = spectrogram.shape[0]
+        t_tick = (np.arange(n_frame)*frame_shift+frame_len/2)/fs
         imshow_settings = {'aspect': 'auto',
                            'cmap': 'jet',
                            'origin': 'lower',
@@ -39,7 +39,7 @@ def specgram(x, frame_len, shift_len, fs, freq_low, freq_high, n_band,
         if n_channel == 1:
             ax = [ax]
         for channel_i in range(n_channel):
-            ax[channel_i].imshow(specgram[:, :, channel_i].T,
+            ax[channel_i].imshow(spectrogram[:, :, channel_i].T,
                                  **imshow_settings)
             ax[channel_i].set_title(f'channel:{channel_i}')
 
@@ -51,7 +51,10 @@ def specgram(x, frame_len, shift_len, fs, freq_low, freq_high, n_band,
         ax[0].set_ylabel('fs(kHz)')
         ax[0].set_xlabel('t(s)')
         fig.savefig(fig_path)
-    return specgram
+    if return_cfs:
+        return spectrogram, cfs
+    else:
+        return spectrogram
 
 
 def parse_args():
@@ -59,7 +62,7 @@ def parse_args():
     parser.add_argument('--wav-path', dest='wav_path', required=True, type=str)
     parser.add_argument('--frame-len', dest='frame_len', type=float,
                         default=0.02, help='second')
-    parser.add_argument('--shift-len', dest='shift_len', type=float,
+    parser.add_argument('--shift-len', dest='frame_shift', type=float,
                         default=0.01, help='second')
     parser.add_argument('--freq-low', dest='freq_low', required=True,
                         type=int, help='')
@@ -78,10 +81,11 @@ def main():
     args = parse_args()
     x, fs = wav_tools.read_wav(args.wav_path)
     frame_len = int(fs*args.frame_len)
-    shift_len = int(fs*args.shift_len)
-    specgram(x, frame_len, shift_len,
-             fs, args.freq_low, args.freq_high, args.n_band,
-             args.fig_path, args.dpi)
+    frame_shift = int(fs*args.frame_shift)
+    cal_spectrogram(
+        x, frame_len, frame_shift, fs,
+        args.freq_low, args.freq_high, args.n_band,
+        args.fig_path, args.dpi)
 
 
 if __name__ == '__main__':

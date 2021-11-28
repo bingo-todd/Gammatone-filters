@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numpy.ctypeslib import ndpointer
 
+from BasicTools import plot_tools
+
 
 class GTF:
     """Python interface for all-pole gammatone filters wrote using C
@@ -13,8 +15,8 @@ class GTF:
     _lib_fpath = os.path.join(_package_dir, 'libGTF.so')
     _c_fpath = os.path.join(_package_dir, 'GTF.c')
 
-    def __init__(self, fs, cf_low=None, cf_high=None, freq_low=None,
-                 freq_high=None, n_band=1):
+    def __init__(self, fs, cfs=None, cf_low=None, cf_high=None,
+                 freq_low=None, freq_high=None, n_band=1):
         """
         Args:
             fs: sample frequency
@@ -23,26 +25,30 @@ class GTF:
             n_band: frequency bands number
         """
         self.bw_factor = 1.019
-        # args check
-        if cf_low is None:
-            if freq_low is not None:
-                # set freq_low as the lowest cutoff frequency
-                cf_low = ((2*freq_low+self.bw_factor*24.7)
-                          / (2-self.bw_factor*24.7*4.37/1000))
-            else:
-                raise Exception('neither cf_low or freq_low is specified')
-        if cf_high is None:
-            if freq_high is not None:
-                # make freq_high as the highest cutoff frequency
-                cf_high = ((2*freq_high-self.bw_factor*24.7)
-                           / (2+self.bw_factor*24.7*4.37/1000))
-            else:
-                raise Exception('neither cf_high or freq_high is specified')
 
-        # center frequencies
-        cfs = self.divide_freq_space(freq_low=cf_low,
-                                     freq_high=cf_high,
-                                     n_band=n_band)
+        if cfs is None:
+            if cf_low is None:
+                if freq_low is not None:
+                    # set freq_low as the lowest cutoff frequency
+                    cf_low = ((2*freq_low+self.bw_factor*24.7)
+                              / (2-self.bw_factor*24.7*4.37/1000))
+                else:
+                    raise Exception('neither cf_low or freq_low is specified')
+            if cf_high is None:
+                if freq_high is not None:
+                    # make freq_high as the highest cutoff frequency
+                    cf_high = ((2*freq_high-self.bw_factor*24.7)
+                               / (2+self.bw_factor*24.7*4.37/1000))
+                else:
+                    raise Exception(
+                        'neither cf_high or freq_high is specified')
+
+            # center frequencies
+            cfs = self.divide_freq_space(freq_low=cf_low,
+                                         freq_high=cf_high,
+                                         n_band=n_band)
+        cfs = cfs.astype(np.float64)
+        n_band = cfs.shape[0]
         # bandwidths
         bws = self.cal_bw(cfs)
         if (cfs is None) or (bws is None):
@@ -341,7 +347,7 @@ class GTF:
 
         return fig
 
-    def plot_ir_spec(self, ir, fs=None, cfs=None, fig=None):
+    def plot_ir_spec(self, ir, fs=None, cfs=None, ax=None, fig=None):
         """plot the waveform and spectrum of given impulse response
         Args:
             ir: impulse response
@@ -365,25 +371,16 @@ class GTF:
         ir = ir[index, :]
 
         spec = np.abs(np.fft.fft(ir, N_fft, axis=1))[:, :N_fft_half]
+        spec_dB = 10*np.log10(spec)
 
-        time_ticks = np.arange(ir_len)/self.fs
         freq_ticks = np.arange(N_fft_half)/N_fft*self.fs
-        x_lim_max = 0.08
-        linewidth = 2
-        if fig is None:
-            fig = plt.figure(figsize=[8, 3])
-        ax = fig.subplots(1, 2)
-        ax[0].plot(time_ticks, ir.T, linewidth=linewidth)
-        ax[0].set_xlabel('Time(s)')
-        ax[0].set_title('irs')
-        ax[0].set_xlim([0, x_lim_max])
 
-        ax[1].plot(freq_ticks, spec.T, linewidth=linewidth)
-        ax[1].set_xlim([self.cf_low/8.0, self.cf_high*1.5])
-        ax[1].set_xlabel('Frequency(Hz)')
-        ax[1].set_title('spectrum')
-        plt.tight_layout()
-        return fig
+        if ax is None:
+            fig, ax = plot_tools.subplots(1, 1)
+        ax.plot(freq_ticks, spec_dB.T)
+        ax.set_xlim([self.cf_low/8.0, self.cf_high*1.5])
+        ax.set_xlabel('Frequency(Hz)')
+        return fig, ax
 
     def get_ir(self, ir_duration=1, is_env_aligned=False,
                is_fine_aligned=False, delay_common=-1, is_gain_norm=True):

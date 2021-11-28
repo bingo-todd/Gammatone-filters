@@ -3,5 +3,5 @@ setup.py
 GTF/GTF.c
 GTF/GTF.py
 GTF/__init__.py
+GTF/cal_spectrogram.py
 GTF/filter.py
-GTF/specgram.py
