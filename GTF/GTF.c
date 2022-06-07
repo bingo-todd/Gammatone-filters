@@ -28,7 +28,7 @@ void free_mem(double* ptr){
 
 
 double* GTF(double*y, double*x,int x_len,int fs, double*cfs, double*bws, int n_band,
-            int is_env_aligned, int is_fine_aligned, int delay_common,
+            int env_align, int fine_align, int delay_common,
             int is_gain_norm){
 
     int* delays = (int*)malloc(sizeof(int)*n_band); // for aligning
@@ -50,12 +50,12 @@ double* GTF(double*y, double*x,int x_len,int fs, double*cfs, double*bws, int n_b
 
     int band_i, sample_i, order;
 
-    // FILE* logger = fopen("log.txt", "w");
-    // fprintf(logger, "%d %d %d %d", is_env_aligned, is_fine_aligned, delay_common, is_gain_norm);
-    // fclose(logger);
+    FILE* logger = fopen("log.txt", "w");
+    fprintf(logger, "%d %d %d %d", env_align, fine_align, delay_common, is_gain_norm);
+    fclose(logger);
     
     // calculate delay of each band
-    if(is_env_aligned == 1){
+    if(env_align == 1){
       max_delay = 0;
       for(band_i=0;band_i<n_band;band_i++){
         delays[band_i] = round(3.0/(2.0*pi*bws[band_i])*fs)/fs;  // integer samples
@@ -92,7 +92,7 @@ double* GTF(double*y, double*x,int x_len,int fs, double*cfs, double*bws, int n_b
           gain_band = pow(1.0/fs,3);
         }
         // aligned filter ir fine-structure
-        if(is_fine_aligned==1){
+        if(fine_align==1){
           phi0 = -3.0*cfs[band_i]/bws[band_i];
         }
         else{

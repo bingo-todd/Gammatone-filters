@@ -44,9 +44,8 @@ class GTF:
                         'neither cf_high or freq_high is specified')
 
             # center frequencies
-            cfs = self.divide_freq_space(freq_low=cf_low,
-                                         freq_high=cf_high,
-                                         n_band=n_band)
+            cfs = self.divide_freq_space(
+                freq_low=cf_low, freq_high=cf_high, n_band=n_band)
         cfs = cfs.astype(np.float64)
         n_band = cfs.shape[0]
         # bandwidths
@@ -81,8 +80,8 @@ class GTF:
 
         # double* GTF(double*x, int x_len, int fs,
         #             double*cfs, double*bws, int n_band,
-        #             int is_env_aligned, int is_fine_aligned,
-        #             int delay_common, int is_gain_norm)
+        #             int align_env, int align_fine,
+        #             int delay_common, int norm_gain)
         self._gt_filter.argtypes = (
             ndpointer(ctypes.c_double, flags='C_CONTIGUOUS'),
             ndpointer(ctypes.c_double, flags='C_CONTIGUOUS'),
@@ -220,20 +219,20 @@ class GTF:
                     out_a[order_i, :] = out_a[order_i-1, :]
         return np.squeeze(y)
 
-    def filter(self, x, is_env_aligned=False, is_fine_aligned=False,
-               delay_common=-1, is_gain_norm=True):
+    def filter(self, x, align_env=False, align_fine=False,
+               delay_common=-1, norm_gain=False):
         """filter input signal using c library
         Args:
             x: signal with shape of [x_len,n_chann], if x only has single
                dimension, n_chann will be added as 1
-            is_env_aligned: whether to align the envelope of ir,
+            align_env: whether to align the envelope of ir,
                 default to False
-            is_fine_aligned: whether to align the fine-structure if envelope is
+            align_fine: whether to align the fine-structure if envelope is
                              aligned, default to False
             delay_common: set delay(s) of filter ir if it is aligned, default
                           to -1, which aligne all filter to the maximum peak
                           position
-            is_gain_norm: whether to normlize gains at center frequency
+            norm_gain: whether to normlize gains at center frequency
         Returns:
             fitler result with the shape of [n_band,x_len,n_chann]
         """
@@ -261,8 +260,8 @@ class GTF:
                             x[:, chann_i].astype(np.float),
                             x_len,
                             self.fs, self.cfs, self.bws, self.n_band,
-                            is_env_aligned, is_fine_aligned,
-                            delay_common, is_gain_norm)
+                            align_env, align_fine,
+                            delay_common, norm_gain)
             x_band_all.append(x_band[:, :, np.newaxis])
         x_filtered = np.concatenate(x_band_all, axis=2)
         return x_filtered
@@ -378,23 +377,23 @@ class GTF:
         if ax is None:
             fig, ax = plot_tools.subplots(1, 1)
         ax.plot(freq_ticks, spec_dB.T)
-        ax.set_xlim([self.cf_low/8.0, self.cf_high*1.5])
+        ax.set_xlim([0, self.fs/2])
         ax.set_xlabel('Frequency(Hz)')
         return fig, ax
 
-    def get_ir(self, ir_duration=1, is_env_aligned=False,
-               is_fine_aligned=False, delay_common=-1, is_gain_norm=True):
+    def get_ir(self, ir_duration=1, align_env=False,
+               align_fine=False, delay_common=-1, norm_gain=True):
         """Get impulse responses of gammatone filter bank
         Args:
             ir_duration: time length of impulse response (s)
-            is_env_aligned: whether to align the envelope of ir,
+            align_env: whether to align the envelope of ir,
                             default to False
-            is_fine_aligned: whether to align the fine-structure if envelope is
+            align_fine: whether to align the fine-structure if envelope is
                              aligned, default to False
             delay_common: set delay(s) of filter ir if it is aligned, default
                           to -1, which aligne all filter to the maximum peak
                           position
-            is_gain_norm: whether to normlize gains at center frequency
+            norm_gain: whether to normlize gains at center frequency
         Returns:
             filter bank impulse response, [n_band,ir_len]
         """
@@ -402,8 +401,8 @@ class GTF:
         # impulse stimuli
         x = np.zeros((n_sample, 1))
         x[100] = 1  # spike
-        irs = self.filter(x, is_env_aligned, is_fine_aligned, delay_common,
-                          is_gain_norm)
+        print(align_env, align_fine)
+        irs = self.filter(x, align_env, align_fine, delay_common, norm_gain)
         return irs
 
     def get_ir_equation(self, t=None):
