@@ -16,27 +16,27 @@ def savefig(fig, fig_name):
 
 def compare_cfs():
     fs = 1e3
-    n_band = 16
     freq_low = 70
     freq_high = 7000
-    gtf_obj = gtf_proposed(fs, cf_low=freq_low, freq_high=freq_high,
-                           n_band=n_band)
-    cfs_proposed = gtf_obj.cfs
-    bws_proposed = gtf_obj.cal_bw(cfs_proposed)
+    for n_band in [4, 8, 12, 16, 32]:
+        gtf_obj = gtf_proposed(fs, cf_low=freq_low, freq_high=freq_high,
+                               n_band=n_band)
+        cfs_proposed = gtf_obj.cfs
+        bws_proposed = gtf_obj.cal_bw(cfs_proposed)
 
-    cfs_ref = gtf_ref.erb_space(low_freq=freq_low, high_freq=freq_high,
-                                num=n_band)[::-1]
-    bws_ref = gtf_obj.cal_bw(cfs_ref)
+        cfs_ref = gtf_ref.erb_space(low_freq=freq_low, high_freq=freq_high,
+                                    num=n_band)[::-1]
+        bws_ref = gtf_obj.cal_bw(cfs_ref)
 
-    fig, ax = plt.subplots(1, 1)
-    ax.errorbar(np.arange(n_band), cfs_proposed, yerr=bws_proposed/2,
-                linewidth=2, label='Todd')
-    ax.errorbar(np.arange(n_band)+n_band/100, cfs_ref, yerr=bws_ref/2,
-                linewidth=2, label='Detly')
-    ax.set_xlabel('freq_band')
-    ax.set_ylabel('freq(Hz)')
-    ax.legend()
-    fig.savefig(f'images/validate/cfs_n{n_band}.png', dpi=100)
+        fig, ax = plt.subplots(1, 1)
+        ax.errorbar(np.arange(n_band), cfs_proposed, yerr=bws_proposed/2,
+                    linewidth=2, label='Todd')
+        ax.errorbar(np.arange(n_band)+n_band/100, cfs_ref, yerr=bws_ref/2,
+                    linewidth=2, label='Detly')
+        ax.set_xlabel('freq_band')
+        ax.set_ylabel('freq(Hz)')
+        ax.legend()
+        fig.savefig(f'images/validate/cfs_n{n_band}.png', dpi=100)
 
 
 def compare_ir():
