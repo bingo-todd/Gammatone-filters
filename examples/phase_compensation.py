@@ -29,16 +29,16 @@ def phase_compensation_test():
 
     ir_len = np.int16(50e-3*fs)
 
-    irs = gtf_filter.get_ir()
+    irs = gtf_filter.get_ir()[:, :, 0]
     fig = my_plot(irs[:, :ir_len], fs)
     savefig(fig, 'irs.png')
 
-    irs_env_aligned = gtf_filter.get_ir(is_env_aligned=True)
+    irs_env_aligned = gtf_filter.get_ir(align_env=True)[:, :, 0]
     fig = my_plot(irs_env_aligned[:, :ir_len], fs)
     savefig(fig, 'irs_env_aligned.png')
 
-    irs_all_aligned = gtf_filter.get_ir(is_env_aligned=True,
-                                        is_fine_aligned=True)
+    irs_all_aligned = gtf_filter.get_ir(align_env=True,
+                                        align_fine=True)[:, :, 0]
     fig = my_plot(irs_all_aligned[:, :ir_len], fs)
     savefig(fig, 'irs_all_aligned.png')
 

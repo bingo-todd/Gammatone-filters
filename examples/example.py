@@ -6,7 +6,7 @@ from BasicTools import wav_tools
 
 def main():
 
-    wav, fs = wav_tools.read_wav('record.wav')
+    wav, fs = wav_tools.read('record.wav')
     gt_filter = GTF(fs, freq_low=80, freq_high=5e3, n_band=32)
     wav_band_all_py = gt_filter.filter_py(wav)
     np.save('wav_band_all_py.npy', wav_band_all_py)
@@ -26,7 +26,7 @@ def main():
         ax[1].plot(wav_band_all[band_i, :, 0].T)
         ax[1].set_xlim([5000, 5050])
 
-        fig.savefig(f'../images/eg_{band_i}.png')
+        fig.savefig(f'images/example/eg_{band_i}.png')
         plt.close(fig)
 
 

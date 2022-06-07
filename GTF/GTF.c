@@ -50,15 +50,17 @@ double* GTF(double*y, double*x,int x_len,int fs, double*cfs, double*bws, int n_b
 
     int band_i, sample_i, order;
 
-    FILE* logger = fopen("log.txt", "w");
-    fprintf(logger, "%d %d %d %d", env_align, fine_align, delay_common, is_gain_norm);
+    /*
+    FILE* logger = fopen("log.txt", "w+");
+    fprintf(logger, "%d %d %d %d\r\n", env_align, fine_align, delay_common, is_gain_norm);
     fclose(logger);
-    
+    */
+
     // calculate delay of each band
     if(env_align == 1){
       max_delay = 0;
       for(band_i=0;band_i<n_band;band_i++){
-        delays[band_i] = round(3.0/(2.0*pi*bws[band_i])*fs)/fs;  // integer samples
+        delays[band_i] = round(3.0/(2.0*pi*bws[band_i])*fs);  // integer samples
         if(delays[band_i]>max_delay){ // find maximum delays
           max_delay = delays[band_i];
         }

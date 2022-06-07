@@ -142,18 +142,18 @@ class GTF:
         erb = self.cal_ERB(cf)
         return self.bw_factor*erb
 
-    def filter_py(self, x, align_env=False, align_tfs=False,
-                  delay_common=None):
+    def filter_py(self, x, align_env=False, align_fine=False,
+                  delay_common=-1):
         """Filters in Python
         Args:
         x: signal with shape of [x_len,n_band], if x only has single dimension,
         n_band will be added as 1
         align_env: aligned peaks of Gammatone filter impulse response
-        align_tfs: aligned the time fine structure
+        align_fine: aligned the time fine structure
         delay_common: if aligned, give the same delay to all channels,
         default, aligned to the maximum delay
         Returns:
-        fitler result with the shape of [n_band,x_len,n_band]
+        fitler result with the shape of [n_band,x_len,n_channel]
         """
         # constant variables
         tpt = 2*np.pi*(1.0/self.fs)
@@ -169,9 +169,9 @@ class GTF:
 
         if align_env is True:
             delays = np.round(3.0/(2.0*np.pi*self.bws)*self.fs)/self.fs
-            if delay_common is not None:
+            if delay_common != -1:
                 delay_common = np.max(delays)
-                delays = np.int(delays-delay_common)
+                delays = delays-delay_common
         else:
             delays = np.zeros(self.n_band)
 
@@ -193,7 +193,7 @@ class GTF:
             #
             norm_factors[band_i] = (1-k)**4/(1+4*k+k**2)*2
             delay_len_band = np.int(delays[band_i]*self.fs)
-            if align_tfs:
+            if align_fine:
                 phi_init = -3.0*cf/self.bws[band_i]
             else:
                 phi_init = 0
@@ -217,7 +217,7 @@ class GTF:
                 # update IIR output
                 for order_i in range(4, 0, -1):
                     out_a[order_i, :] = out_a[order_i-1, :]
-        return np.squeeze(y)
+        return y
 
     def filter(self, x, align_env=False, align_fine=False,
                delay_common=-1, norm_gain=False):
@@ -296,7 +296,7 @@ class GTF:
         ax[1].set_ylabel('Delay(ms)')
         plt.tight_layout()
 
-        return fig
+        return fig, ax
 
     def plot_filter_spectrum(self, cf=4e3):
         order = 4
@@ -401,7 +401,6 @@ class GTF:
         # impulse stimuli
         x = np.zeros((n_sample, 1))
         x[100] = 1  # spike
-        print(align_env, align_fine)
         irs = self.filter(x, align_env, align_fine, delay_common, norm_gain)
         return irs
 
@@ -413,9 +412,7 @@ class GTF:
 
         n_sample = t.shape[0]
         ir = np.zeros((self.n_band, n_sample))
-
         order = 4
-
         part1 = t**(order-1)
         for band_i in range(self.n_band):
             part2 = np.multiply(np.cos(2*np.pi*self.cfs[band_i]*t),
