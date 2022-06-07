@@ -54,7 +54,7 @@ def compare_ir():
     coefs = gtf_ref.make_erb_filters(fs, gtf_obj.cfs)
     irs_ref = gtf_ref.erb_filterbank(x, coefs)
     fig, ax = gtf_obj.plot_ir_spec(irs[:, :1000])
-    savefig(fig, "ref.png")
+    savefig(fig, "reference.png")
 
     irs_eq = gtf_obj.get_ir_equation()
 
